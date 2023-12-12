@@ -96,7 +96,7 @@ function yesNoDialog() {
 
         local VALUE="$(echo -n "${1}" | cut -s -d '=' -f 2)";
         local -i COUNT="$(echo -n "${VALUE}" | sed 's/[^,]//g' | wc -c)";
-    
+
         if [[ ${COUNT} -eq 1 ]]; then
             VALUE="$(awkDescriptor "BEGIN { textCase(\"${VALUE}\") }")";
         fi
@@ -160,9 +160,9 @@ function yesNoDialog() {
             boolean "ignore";
         elif [[ ${CHANGE} =~ ^(noco(l(l(a(p(s(e)?)?)?)?)?)?)$ ]]; then
             boolean "noColapse";
-        elif [[ ${CHANGE} =~ ^(nol(i(n(e(s)?)?)?)?)$ ]]; then        
+        elif [[ ${CHANGE} =~ ^(nol(i(n(e(s)?)?)?)?)$ ]]; then
             boolean "noLines";
-        elif [[ ${CHANGE} =~ ^(noca(n(c(e(l)?)?)?)?)$ ]]; then 
+        elif [[ ${CHANGE} =~ ^(noca(n(c(e(l)?)?)?)?)$ ]]; then
             boolean "noCancel";
         elif [[ ${CHANGE} =~ ^(d(e(f(a(u(l(t(n(o)?)?)?)?)?)?)?)?)$ ]]; then
             boolean "defaultNo";
@@ -307,12 +307,12 @@ set -x
                     I="$(echo "${I}" | cut -d '=' -f 1)";
                 fi
 
-                if grep -Pq '^(--((mixed|password)?form|(input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
-                    OPTIONS+=("${INDEX}"  "${I}");
-                    ((INDEX++));
-                elif 
-                    OPTIONS+=("${I}");
-                fi
+                # if grep -Pq '^(--((mixed|password)?form|(input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
+                #     OPTIONS+=("${INDEX}"  "${I}");
+                #     ((INDEX++));
+                # elif
+                #     OPTIONS+=("${I}");
+                # fi
 
                 if [[ ${VARIANT} =~ (.*list)$ ]]; then
                     if "${SELECTED}"; then
@@ -325,7 +325,7 @@ set -x
             done
 
         DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}" 3>&1 1>&2 2>&3)";
-     echo dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}"
+    echo dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}"
 
 set +x
     fi
@@ -333,21 +333,6 @@ set +x
     DIALOG_EXIT_STATUS="${?}";
     return "${DIALOG_EXIT_STATUS:-0}";
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
