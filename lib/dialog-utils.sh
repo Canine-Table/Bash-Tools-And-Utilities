@@ -1,8 +1,8 @@
 if [[ ! $(declare -p | grep 'declare -x LIB_DIR') ]]; then
-    export LIB_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )";
+    export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > '/dev/null' 2>&1 && pwd)";
 fi
 
-function yesNoDialog() {
+function getDialog() {
 
     local -A DEFAULTS=(
         ["yesLabel"]="Yes"
@@ -86,11 +86,18 @@ function yesNoDialog() {
     local -a PARAMETERS OPTIONS;
     local -Ai SIZE=(
         ["width"]="$(($(tput cols) - 6))"
-        ["hieght"]="$(($(tput lines) - 3))"
+        ["height"]="$(($(tput lines) - 3))"
     );
 
-    local -i DIALOG_ESC=255 DIALOG_ITEM_HELP=4 DIALOG_EXTRA=3 DIALOG_HELP=2 DIALOG_CANCEL=1 DIALOG_OK=0  OPTIND AUTO_SIZE INDEX;
+    local -i DIALOG_ESC=255 DIALOG_ITEM_HELP=4 DIALOG_EXTRA=3 DIALOG_HELP=2 DIALOG_CANCEL=1 DIALOG_OK=0 OPTIND AUTO_SIZE INDEX;
     local FULL_SCREEN="false" SELECTED="false" OPT OPTARG I VARIANT;
+
+    [[ -n "${DIALOG_MULTI_RESPONSE[@]}" ]] && unset DIALOG_MULTI_RESPONSE;
+    [[ -n "${DIALOG_LIST_RESPONSE[@]}" ]] && unset DIALOG_LIST_RESPONSE;
+
+    declare -g DIALOG_RESPONSE;
+    declare -ag DIALOG_LIST_RESPONSE;
+    declare -Ag DIALOG_MULTI_RESPONSE;
 
     function setTextOptions() {
 
@@ -212,8 +219,6 @@ function yesNoDialog() {
             VARIANT="--textbox";
         elif [[ ${1,,} =~ ^(ti(m(e(b(o(x)?)?)?)?)?)$ ]]; then
             VARIANT="--timebox";
-        elif [[ ${1,,} =~ ^(tr(e(e(v(i(e(w)?)?)?)?)?)?)$ ]]; then
-            VARIANT="--treeview";
         elif [[ ${1,,} =~ ^(inf(o(b(o(x)?)?)?)?)$ ]]; then
             VARIANT="--infobox";
         elif [[ ${1,,} =~ ^(inputb(o(x)?)?)$ ]]; then
@@ -270,7 +275,7 @@ function yesNoDialog() {
         BOOLEAN["noShadow"]="true";
         SIZE=(
             ["width"]="$(tput cols)"
-            ["hieght"]="$(tput lines)"
+            ["height"]="$(tput lines)"
         );
 
     fi
@@ -294,12 +299,12 @@ function yesNoDialog() {
     OPTIONS+=("${VARIANT}" "${1}");
     shift;
 
-    if grep -q -P '^(--(((t(ext|ail))|progr(am|ess)|msg|info)box(?(4)(bg))?|yesno))$' <(echo "${VARIANT}"); then
-        DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" 3>&1 1>&2 2>&3)";
+    if grep -Pq '^(--(((t(ext|ail|ime))|p(rogr(am|ess)|ause)|msg|info)box(?(4)(bg))?|yesno|(f|d)select))$' <<< "${VARIANT}"; then
+        DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["height"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" 3>&1 1>&2 2>&3)";
     else
         INDEX=1;
-        if grep -q -P '^(--((mixed|password)?form|(input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
-            OPTIONS+=("${AUTO_SIZE:-"${SIZE["hieght"]}"}");
+        if grep -Pq '^(--((mixed|password)?form|(input)?menu|(build|radio|check)list))$' <<< "${VARIANT}"; then
+            OPTIONS+=("${AUTO_SIZE:-"${SIZE["height"]}"}");
         fi
 
         for I in "${@}"; do
@@ -308,9 +313,11 @@ function yesNoDialog() {
                 I="$(echo "${I}" | cut -d '=' -f 1)";
             fi
 
-            if grep -Pq '^(--(((input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
+
+            if grep -Pq '^(--(menu|(build|radio|check)list))$' <<< "${VARIANT}"; then
                 OPTIONS+=("${INDEX}" "${I}");
-            elif grep -Pq '^(--(password|mixed)?form)$'  <(echo "${VARIANT}"); then
+                DIALOG_MULTI_RESPONSE["${INDEX}"]="${I}";
+            elif grep -Pq '^(--((password|mixed)?form|inputmenu))$'  <<< "${VARIANT}"; then
                 DEFAULTS["label"]="$(echo "${I}" | cut -d '=' -f '1')";
                 DEFAULTS["value"]="$(echo "${I}" | cut -s -d '=' -f '2')";
 
@@ -318,23 +325,28 @@ function yesNoDialog() {
                     DEFAULTS["value"]="";
                 fi
 
-                OPTIONS+=(  
-                    " ${DEFAULTS["label"]}: "
-                    "${INDEX}"
-                    "0"
-                    "${DEFAULTS["value"]}"
-                    "${INDEX}"
-                    "$((${#DEFAULTS["label"]} + 4))"
-                    "$((${SIZE["width"]} - ${#DEFAULTS["label"]} - 10))"
-                    "0"
-                );
+                if [[ "${VARIANT}" == '--inputmenu' ]]; then
+                    OPTIONS+=(" ${DEFAULTS["label"]}: " "${DEFAULTS["value"]}");
+                else
+                    DIALOG_MULTI_RESPONSE["${INDEX}"]="${DEFAULTS["label"]}";
+                    OPTIONS+=(
+                        " ${DEFAULTS["label"]}: "
+                        "${INDEX}"
+                        "0"
+                        "${DEFAULTS["value"]}"
+                        "${INDEX}"
+                        "$((${#DEFAULTS["label"]} + 4))"
+                        "$((${SIZE["width"]} - ${#DEFAULTS["label"]} - 10))"
+                        "0"
+                    );
+                fi
             else
                 OPTIONS+=("${I}");
             fi
 
             ((INDEX++));
 
-            if grep -Pq '^(--(build|radio|check)list)$' <(echo "${VARIANT}"); then
+            if grep -Pq '^(--(build|radio|check)list)$' <<< "${VARIANT}"; then
                 if "${SELECTED}"; then
                     OPTIONS+=("on");
                     SELECTED="false";
@@ -344,16 +356,36 @@ function yesNoDialog() {
             fi
         done
 
-        DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}" 3>&1 1>&2 2>&3)";
+        DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["height"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}" 3>&1 1>&2 2>&3)";
     fi
-            
 
-    echo dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}" 3>&1 1>&2 2>&3
     DIALOG_EXIT_STATUS="${?}";
+
+    if [[ "${VARIANT}" == '--inputmenu' ]]; then
+        if grep -q 'RENAMED' <<< "${DIALOG_RESPONSE}"; then
+            DIALOG_RESPONSE="$(echo -n "${DIALOG_RESPONSE}" | sed 's/^.*: //g; s/[[:space:]]*$//g; s/^[[:space:]]*//g;')";
+        else
+            DIALOG_RESPONSE="";
+        fi
+    elif grep -Pq '^(--(mixed|password)?form)$' <<< "${VARIANT}"; then
+        for I in "${!DIALOG_MULTI_RESPONSE[@]}"; do
+            DIALOG_MULTI_RESPONSE["${DIALOG_MULTI_RESPONSE["${I}"]}"]="$(echo "${DIALOG_RESPONSE}" | sed -n "${I}p")";
+            unset DIALOG_MULTI_RESPONSE["${I}"];
+        done
+
+        unset DIALOG_RESPONSE;
+    elif grep -Pq '^(--(menu|(build|radio|check)list))$' <<< "${VARIANT}"; then
+        OPTIONS=(${DIALOG_RESPONSE});
+
+        for I in "${OPTIONS[@]}"; do
+            DIALOG_LIST_RESPONSE+=("${I}" "${DIALOG_MULTI_RESPONSE["${I}"]}");
+        done
+
+        unset DIALOG_MULTI_RESPONSE DIALOG_RESPONSE;
+    fi
+
+    [[ "${DIALOG_EXIT_STATUS}" -eq 1 ]] && break &> '/dev/null' || exit 1;
+    [[ "${DIALOG_EXIT_STATUS}" -eq 255 ]] && break &> '/dev/null';
+
     return "${DIALOG_EXIT_STATUS:-0}";
 }
-
-
-
-
-
