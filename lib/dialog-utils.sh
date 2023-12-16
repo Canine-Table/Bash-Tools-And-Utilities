@@ -11,6 +11,8 @@ function yesNoDialog() {
         ["cancelLabel"]="Cancel"
         ["extraLabel"]="Extra"
         ["helpLabel"]="Help"
+        ["value"]=""
+        ["label"]=""
     );
 
     local -A ARGUMENTS=(
@@ -290,46 +292,63 @@ function yesNoDialog() {
     done
 
     OPTIONS+=("${VARIANT}" "${1}");
-    shift
+    shift;
 
-    if grep -Pq '^(--(((t(ext|ail))|progr(am|ess)|msg|info)box(?(4)(bg))?|yesno))$' <(echo "${VARIANT}"); then
+    if grep -q -P '^(--(((t(ext|ail))|progr(am|ess)|msg|info)box(?(4)(bg))?|yesno))$' <(echo "${VARIANT}"); then
         DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" 3>&1 1>&2 2>&3)";
     else
-            INDEX=1;
-set -x
-            if grep -Pq '^(--((mixed|password)?form|(input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
-                OPTIONS+=("${AUTO_SIZE:-"${SIZE["hieght"]}"}");
+        INDEX=1;
+        if grep -q -P '^(--((mixed|password)?form|(input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
+            OPTIONS+=("${AUTO_SIZE:-"${SIZE["hieght"]}"}");
+        fi
+
+        for I in "${@}"; do
+            if [[ "$(echo -n "${I}" | sed 's/[^=]//g' | wc -c)" -eq 1 && "$(echo -n "${I,,}" | cut -d '=' -f 2)" == 'on' ]]; then
+                SELECTED="true";
+                I="$(echo "${I}" | cut -d '=' -f 1)";
             fi
 
-            for I in "${@}"; do
-                if [[ "$(echo -n "${I}" | sed 's/[^=]//g' | wc -c)" -eq 1 && "$(echo -n "${I,,}" | cut -d '=' -f 2)" == 'on' ]]; then
-                    SELECTED="true";
-                    I="$(echo "${I}" | cut -d '=' -f 1)";
+            if grep -Pq '^(--(((input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
+                OPTIONS+=("${INDEX}" "${I}");
+            elif grep -Pq '^(--(password|mixed)?form)$'  <(echo "${VARIANT}"); then
+                DEFAULTS["label"]="$(echo "${I}" | cut -d '=' -f '1')";
+                DEFAULTS["value"]="$(echo "${I}" | cut -s -d '=' -f '2')";
+
+                if [[ -z "${DEFAULTS["value"]}" ]]; then
+                    DEFAULTS["value"]="";
                 fi
 
-                # if grep -Pq '^(--((mixed|password)?form|(input)?menu|(radio|check)list|treeview))$' <(echo "${VARIANT}"); then
-                #     OPTIONS+=("${INDEX}"  "${I}");
-                #     ((INDEX++));
-                # elif
-                #     OPTIONS+=("${I}");
-                # fi
+                OPTIONS+=(  
+                    " ${DEFAULTS["label"]}: "
+                    "${INDEX}"
+                    "0"
+                    "${DEFAULTS["value"]}"
+                    "${INDEX}"
+                    "$((${#DEFAULTS["label"]} + 4))"
+                    "$((${SIZE["width"]} - ${#DEFAULTS["label"]} - 10))"
+                    "0"
+                );
+            else
+                OPTIONS+=("${I}");
+            fi
 
-                if [[ ${VARIANT} =~ (.*list)$ ]]; then
-                    if "${SELECTED}"; then
-                        OPTIONS+=("on");
-                        SELECTED="false";
-                    else
-                        OPTIONS+=("off");
-                    fi
+            ((INDEX++));
+
+            if grep -Pq '^(--(build|radio|check)list)$' <(echo "${VARIANT}"); then
+                if "${SELECTED}"; then
+                    OPTIONS+=("on");
+                    SELECTED="false";
+                else
+                    OPTIONS+=("off");
                 fi
-            done
+            fi
+        done
 
         DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}" 3>&1 1>&2 2>&3)";
-    echo dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}"
-
-set +x
     fi
+            
 
+    echo dialog "${PARAMETERS[@]}" "${OPTIONS[@]:0:2}" "${AUTO_SIZE:-"${SIZE["hieght"]}"}" "${AUTO_SIZE:-"${SIZE["width"]}"}" "${OPTIONS[@]:2}" 3>&1 1>&2 2>&3
     DIALOG_EXIT_STATUS="${?}";
     return "${DIALOG_EXIT_STATUS:-0}";
 }
