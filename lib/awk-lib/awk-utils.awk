@@ -67,60 +67,32 @@ function wrap(array,columns,string) {
 
     current_length = length(array[length(array)]);
     string_index = 1;
+#+ length(string) >= columns
 
-    if (current_length + length(string) > columns) {
-        array[current_length++] = array[current_length] "" substr(string, 1, columns - current_length);
+#print current_length " " array[length(array)] " " substr(string, 1, columns - current_length)
+    if (current_length > 0) {
+        array[length(array)] = array[length(array)] "" substr(string, 1, columns - current_length);
         string_index = columns - current_length;
     }
 
+#print string_index " " current_length
     for (; string_index <= length(string); string_index += columns) {
-        array[current_length] = substr(string, string_index, columns)
-        
+        new_string = substr(string, string_index, columns);
+        gsub(/[[:space:]]*$/, "", new_string);
+        array[current_length] = new_string;
+
         if (string_index < length(string)) {
             current_length++;
         }
     }
 }
 
-function fold(string,count) {
-    string = string " EOF";
-    array_index = 0;
-
-    if(match(string, /^[[:space:]]+/)) {
-        new_string = substr(string, 1, RSTART + RLENGTH - 1);
-        string = substr(string, RSTART + RLENGTH);
-    }
-
-    while (match(string, /[[:space:]]+/)) {
-        sub_string = substr(string, 1, RSTART + RLENGTH - 1);
-
-        if (length(sub_string) + length(new_string) < 20) {
-            new_string = new_string "" sub_string;
-        } else {
-            new_array[++array_index] = new_string;
-            new_string = sub_string;
-        }
-
-        string = substr(string, RSTART + RLENGTH);
-    }
-
-    if (length(new_string) > 0) {
-        new_array[++array_index] = new_string;
-    } 
-
-    for (i = 1; i < length(new_array); i++) {
-        print new_array[i];
-    }
-    
-    delete new_array;
-}
-
-function folds(array,columns,string) {
+function fold(array,columns,string) {
 
     if (length(array) == 0) {
         array[1] = "";
     }
-    
+
     string = string " EOF";
     array_index = length(array);
     current_length = length(array[array_index]);
@@ -147,7 +119,9 @@ function folds(array,columns,string) {
 
             placeholder_string = "";
             wrap(array, columns, new_string);
+            continue
         } else if (length(new_string) + length(placeholder_string) >= columns) {
+            gsub(/[[:space:]]*$/, "", placeholder_string);
             array[array_index++] = placeholder_string;
             placeholder_string = "";
             continue;
@@ -161,4 +135,6 @@ function folds(array,columns,string) {
     if (length(placeholder_string) > 0) {
         array[array_index] = substr(placeholder_string, 1, length(placeholder_string) - 1);
     }
+
+    placeholder_string = "";
 }
