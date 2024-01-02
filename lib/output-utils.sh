@@ -1,6 +1,4 @@
-if [[ ! $(declare -p | grep 'declare -x LIB_DIR') ]]; then
-    export LIB_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )";
-fi
+grep -q 'LIB_DIR' <(export) || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
 
 function consoleCodes() {
 
@@ -261,6 +259,201 @@ function consoleCodes() {
 
     for I in "${RESET_PROPERTIES[@]}"; do
         printf "\e${I}";
+    done
+
+    return 0;
+}
+
+function fieldManager() {
+
+    [[ -z "${FIELDS}" ]] || unset FIELDS;
+
+    declare -ga FIELDS;
+    local -i OPTIND COUNT;
+    local OPT OPTARG;
+    local -A FIELD_PROPERTIES=(
+        ["inputFieldSeparator"]=" "
+        ["outputFieldSeparator"]="\n"
+        ["delimiter"]=","
+        ["string"]=""
+        ["merge"]="false"
+        ["print"]="false"
+        ["unset"]="false"
+        ["quote"]=""
+    );
+
+    function quote() {
+        [[ ${1,,} =~ ^(\'|s(i(n(g(l(e(q(u(o(t(e(s)?)?)?)?)?)?)?)?)?)?)?)$ ]] && FIELD_PROPERTIES["quote"]="'";
+        if [[ ${1,,} =~ ^(\"|d(o(u(b(l(e(q(u(o(t(e(s)?)?)?)?)?)?)?)?)?)?)?)$ || -z "${FIELD_PROPERTIES["quote"]}" ]]; then
+            [[ -z "${BASH_REMATCH[@]}" ]] && echo -e 'You did not specify a valid quotation.\nYou can choose between single and double quotes.\nDefaulting to double quotes.';
+            FIELD_PROPERTIES["quote"]='"';
+        fi
+
+        return 0;
+    }
+
+    while getopts :o:i:d:s:q:mpu OPT; do
+        case ${OPT} in
+            u) FIELD_PROPERTIES["unset"]="true";;
+            p) FIELD_PROPERTIES["print"]="true";;
+            m) FIELD_PROPERTIES["merge"]="true";;
+            q) quote "${OPTARG}";;
+            o) FIELD_PROPERTIES["outputFieldSeparator"]="${OPTARG}";;
+            i) FIELD_PROPERTIES["inputFieldSeparator"]="${OPTARG}";;
+            d) FIELD_PROPERTIES["delimiter"]="${OPTARG}";;
+            s) FIELD_PROPERTIES["string"]="${OPTARG}";;
+        esac
+    done
+
+    shift "$((OPTIND - 1))";
+
+    [[ -z "${FIELD_PROPERTIES["string"]}" ]] && if [[ -n "${@}" ]]; then
+        FIELD_PROPERTIES["string"]="${@}";
+    else
+        echo "String required";
+        return 1;
+    fi
+
+    [[ -z "${FIELD_PROPERTIES["delimiter"]}" ]] && FIELD_PROPERTIES["delimiter"]=",";
+
+    if ! "${FIELD_PROPERTIES["merge"]}"; then
+        [[ "${#FIELD_PROPERTIES["delimiter"]}" -gt 1 ]] && echo -e "The delimiter can only be one character.\nThe first character of '${FIELD_PROPERTIES["delimiter"]}' will be used.";
+        COUNT="$(sed "s/[^${FIELD_PROPERTIES["delimiter"]}]//g" <<< "${FIELD_PROPERTIES["string"]}" | wc -c)";
+
+        for ((OPTIND=1; OPTIND <= "${COUNT}"; OPTIND++)); do
+            FIELDS+=("$(cut -d "${FIELD_PROPERTIES["delimiter"]:0:1}" -f "${OPTIND}" <<< "${FIELD_PROPERTIES["string"]}" | sed "s/^[[:space:]]*/${FIELD_PROPERTIES["quote"]}/g; s/[[:space:]]*$/${FIELD_PROPERTIES["quote"]}/g;")");
+            "${FIELD_PROPERTIES["print"]}" && printf "${FIELDS[(-1)]}" && [[ -n "${FIELD_PROPERTIES["outputFieldSeparator"]}" && "${OPTIND}" -lt "${COUNT}" ]] && printf "${FIELD_PROPERTIES["outputFieldSeparator"]}";
+        done
+    else
+        [[ -z "${FIELD_PROPERTIES["inputFieldSeparator"]}" ]] && FIELD_PROPERTIES["inputFieldSeparator"]=" ";
+        FIELDS=("$(sed "s/${FIELD_PROPERTIES["inputFieldSeparator"]}/${FIELD_PROPERTIES["delimiter"]}/g; s/$/${FIELD_PROPERTIES["quote"]}/g; s/^/${FIELD_PROPERTIES["quote"]}/g;" <<< "${FIELD_PROPERTIES["string"]}" | sed "s/${FIELD_PROPERTIES["delimiter"]}/${FIELD_PROPERTIES["quote"]}${FIELD_PROPERTIES["delimiter"]}${FIELD_PROPERTIES["quote"]}/g" )");
+        "${FIELD_PROPERTIES["print"]}" && printf "${FIELDS[(-1)]}";
+    fi
+
+    "${FIELD_PROPERTIES["unset"]}" && unset FIELDS;
+    return 0;
+}
+
+function fileSystem() {
+
+    function setName() {
+
+        fieldManager -d '=' "${OPTARG}";
+        local NOT='';
+        local -n REF;
+        local -a TYPES=(
+            "regex,extentions"
+            "regex,regexpr"
+            "name"
+            "lname,links"
+            "lname"
+            "path,directory"
+            "path"
+            "wholename"
+            "wholename,fullname"
+        ) MATCHES;
+
+        local TYPE="$(awkCompletion "${FIELDS[0]}" "${TYPES[@]}")" S;
+
+        if [[ -n "${FIELDS[1]}" ]]; then
+
+            if [[ "${OPT}" == 'N' ]]; then
+                REF='EXCLUDE';
+                NOT='-not';
+            else
+                REF='INCLUDE';
+            fi
+
+            if [[ ${TYPE} =~ ^((l)?name|path|wholename|!)$ ]]; then
+                MATCHES=($(fieldManager -pu "${FIELDS[1]}"));
+
+                for S in "${MATCHES[@]}"; do
+                    REF+=(${NOT} "${TYPE/#/-${FILE_SYSTEM_PROPERTIES["caseSensitive"]}}" "${S}");
+                done
+            else
+                REF+=(${NOT} "${TYPE/#/-${FILE_SYSTEM_PROPERTIES["caseSensitive"]}}" ".*\.\($(fieldManager -pm -i ',' -d '\\|' "${FIELDS[1]}")\)");
+            fi
+        else
+            return 1;
+        fi
+
+        return 0;
+    }
+
+    function setProperty() {
+        if [[ "${OPT}" == 't' && -z "${FILE_SYSTEM_PROPERTIES["type"]}" ]]; then
+            local TYPE;
+            local -a TYPES=(
+                "f,files"
+                "d,directories"
+                "c,character files"
+                "p,named pipe files"
+                "b,block devices"
+                "l,links"
+                "s,sockets"
+            );
+
+            if TYPE="$(awkCompletion -q "${OPTARG}" "${TYPES[@]}")"; then
+                FILE_SYSTEM_PROPERTIES["type"]="-${FILE_SYSTEM_PROPERTIES["currentFileSystem"]}type";
+                PARAMETERS+=("${FILE_SYSTEM_PROPERTIES["type"]}" "${TYPE}");
+            fi
+        elif [[ ${OPT} =~ ^([Mm])$ ]]; then
+            local DEPTH;
+
+            case "${BASH_REMATCH[0]}" in
+                M) DEPTH='-maxdepth';;
+                m) DEPTH='-mindepth';;
+            esac
+
+            if [[ -z "${FILE_SYSTEM_PROPERTIES["${DEPTH}"]}" && ${OPTARG} =~ ^[[:digit:]]+$ && "${OPTARG}" -gt 0 ]]; then
+                FILE_SYSTEM_PROPERTIES["${DEPTH}"]="${OPTARG}";
+                PARAMETERS+=("${DEPTH}" "${FILE_SYSTEM_PROPERTIES["${DEPTH}"]}");
+            fi
+        fi
+
+        return 0;
+    }
+
+    function setPath() {
+        [[ -d "${OPTARG}" && -r "${OPTARG}" ]] && FILE_SYSTEM_PROPERTIES["path"]="${OPTARG}";
+        return 0;
+    }
+
+    [[ -z "${FOUND}" ]] || unset FOUND;
+    
+    declare -Ag FOUND;
+    local OPT OPTARG;
+    local -i OPTIND;
+    local -a INCLUDE EXCLUDE PARAMETERS;
+    local -A FILE_SYSTEM_PROPERTIES=(
+        ["caseSensitive"]="i"
+        ["currentFileSystem"]=""
+        ["type"]=""
+        ["path"]=""
+        ["-maxdepth"]=""
+        ["-mindepth"]=""
+    );
+
+    while getopts :p:t:m:M:N:n:cf OPT; do
+        case ${OPT} in
+            c) [[ -z "${FILE_SYSTEM_PROPERTIES["caseSensitive"]}" ]] && FILE_SYSTEM_PROPERTIES["caseSensitive"]="i" || unset FILE_SYSTEM_PROPERTIES["caseSensitive"];;
+            f) [[ -z "${FILE_SYSTEM_PROPERTIES["currentFileSystem"]}" ]] && FILE_SYSTEM_PROPERTIES["currentFileSystem"]="x" || unset FILE_SYSTEM_PROPERTIES["currentFileSystem"];;
+            p) setPath;;
+            N|n) setName;;
+            t|M|m) setProperty;;
+        esac
+    done
+
+    shift "$((OPTIND - 1))";
+
+    mapfile -t NAMES < <(
+        for ((OPTIND=0; OPTIND < "${#INCLUDE[@]}"; OPTIND+=2)); do
+            find "${FILE_SYSTEM_PROPERTIES["path"]:-"${PWD}"}" "${PARAMETERS[@]}" "${INCLUDE[@]:${OPTIND}:2}" "${EXCLUDE[@]}" -exec realpath "{}" \; 2> '/dev/null';
+        done
+    );
+
+    for OPT in "${NAMES[@]}"; do
+        FOUND["$(basename "${OPT}")"]="$(dirname "${OPT}")";
     done
 
     return 0;

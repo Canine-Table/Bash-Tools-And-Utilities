@@ -1,6 +1,4 @@
-if [[ ! $(declare -p | grep 'declare -x LIB_DIR') ]]; then
-    export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > '/dev/null' 2>&1 && pwd)";
-fi
+grep -q 'LIB_DIR' <(export) || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
 
 function getDialog() {
 
@@ -384,7 +382,7 @@ function getDialog() {
         unset DIALOG_MULTI_RESPONSE DIALOG_RESPONSE;
     fi
 
-    [[ "${DIALOG_EXIT_STATUS}" -eq 1 ]] && break &> '/dev/null' || exit 1;
+    [[ "${DIALOG_EXIT_STATUS}" -eq 1 ]] && break &> '/dev/null';
     [[ "${DIALOG_EXIT_STATUS}" -eq 255 ]] && break &> '/dev/null';
 
     return "${DIALOG_EXIT_STATUS:-0}";
