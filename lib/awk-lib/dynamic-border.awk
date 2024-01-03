@@ -1,18 +1,20 @@
 function borderLabel(label,total) {
     third = int(total / 3);
+    renainder = 3 % 2;
 
     if (length(label) < third) {
-        label_size = characterString(length(label) + 2, border_style["horizontal"]);
+        label_size = characterString(lengthCounter(label) + 2, border_style["horizontal"]);
         print " " border_style["topLeft"] "" label_size "" border_style["topRight"];
         print " " border_style["vertical"] " " label " " border_style["vertical"];
     } else {
-        split("", labels)
+        split("", labels);
         fold(labels, third + 1, label);
-        label_size = characterString(third + 1, border_style["horizontal"]);
+        label_size = characterString(third + 3, border_style["horizontal"]);
         print " " border_style["topLeft"] "" label_size "" border_style["topRight"];
 
         for (l=1; l <= length(labels); l++) {
-            print " " border_style["vertical"] " " labels[l] " " sprintf("%*s", third - 1 - length(labels[l]), "") "" border_style["vertical"];
+            gsub(/[[:space:]]*$/, "", labels[l]);
+            print " " border_style["vertical"] " " labels[l] "" sprintf("%*s", third + 2 - length(labels[l]), "") "" border_style["vertical"];
         }
 
         delete labels;
@@ -24,8 +26,7 @@ function borderLabel(label,total) {
 BEGIN {
 
     borderStyle(style);
-
-    horizontal=characterString(columns - 4, border_style["horizontal"]);
+    horizontal = characterString(columns - 4, border_style["horizontal"]);
 
     if (length(label) > 0 && int(columns / 3) < 7) {
         label = "";
@@ -41,15 +42,16 @@ BEGIN {
     split("", lines);
 
     while (getline line < "-") {
-        if (length(wrap) == 0) {
+        if (length(wordWrap) == 0) {
             lines[length(lines) + 1] = "";
         }
 
         fold(lines, columns - 6, line);
     }
 
-    for (m=1; m <= length(lines); m++) {
-       print " " border_style["vertical"] " " lines[m] "" sprintf("%*s", columns - 5 - length(lines[m]), "") "" border_style["vertical"];
+    for (m = 1; m <= length(lines); m++) {
+        gsub(/[[:space:]]*$/, "", lines[m]);
+        print " " border_style["vertical"] " " lines[m] "" sprintf("%*s", columns - 5 - lengthCounter(lines[m]), "") "" border_style["vertical"];
     }
 
     delete lines;

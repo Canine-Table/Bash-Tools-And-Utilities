@@ -31,29 +31,42 @@ function random(min,max) {
 
 function borderStyle(style) {
     if (style == "double") {
-        border_style["topLeft"]="╔";
-        border_style["bottomLeft"]="╚";
-        border_style["topRight"]="╗";
-        border_style["bottomRight"]="╝";
-        border_style["horizontal"]="═";
-        border_style["horizontalUp"]="╩";
-        border_style["horizontalDown"]="╦";
-        border_style["vertical"]="║";
-        border_style["verticalLeft"]="╣";
-        border_style["verticalRight"]="╠";
-        border_style["horizontalVertical"]="╬";
-    } else {
-        border_style["topLeft"]="┌";
-        border_style["bottomLeft"]="└";
-        border_style["topRight"]="┐";
-        border_style["bottomRight"]="┘";
-        border_style["horizontal"]="─";
-        border_style["horizontalUp"]="┴";
-        border_style["horizontalDown"]="┬";
-        border_style["vertical"]="│";
-        border_style["verticalLeft"]="┤";
-        border_style["verticalRight"]="├";
-        border_style["horizontalVertical"]="┼";
+        border_style["topLeft"] = "╔";
+        border_style["bottomLeft"] = "╚";
+        border_style["topRight"] = "╗";
+        border_style["bottomRight"] = "╝";
+        border_style["horizontal"] = "═";
+        border_style["horizontalUp"] = "╩";
+        border_style["horizontalDown"] = "╦";
+        border_style["vertical"] = "║";
+        border_style["verticalLeft"] = "╣";
+        border_style["verticalRight"] = "╠";
+        border_style["horizontalVertical"] = "╬";
+    } else if (style == "single") {
+        border_style["topLeft"] = "┌";
+        border_style["bottomLeft"] = "└";
+        border_style["topRight"] = "┐";
+        border_style["bottomRight"] = "┘";
+        border_style["horizontal"] = "─";
+        border_style["horizontalUp"] = "┴";
+        border_style["horizontalDown"] = "┬";
+        border_style["vertical"] = "│";
+        border_style["verticalLeft"] = "┤";
+        border_style["verticalRight"] = "├";
+        border_style["horizontalVertical"] = "┼";
+    } else if (length(style) > 0) {
+        style = substr(style, 1, 1);
+        border_style["topLeft"] = style;
+        border_style["bottomLeft"] = style;
+        border_style["topRight"] = style;
+        border_style["bottomRight"] = style;
+        border_style["horizontal"] = style;
+        border_style["horizontalUp"] = style;
+        border_style["horizontalDown"] = style;
+        border_style["vertical"] = style;
+        border_style["verticalLeft"] = style;
+        border_style["verticalRight"] = style;
+        border_style["horizontalVertical"] = style;
     }
 }
 
@@ -63,29 +76,25 @@ function characterString(count,character) {
     return string;
 }
 
+
 function wrap(array,columns,string) {
 
-    current_length = length(array[length(array)]);
+    array_index = length(array);
+    current_length = length(array[array_index]);
     string_index = 1;
-#+ length(string) >= columns
 
-#print current_length " " array[length(array)] " " substr(string, 1, columns - current_length)
     if (current_length > 0) {
-        array[length(array)] = array[length(array)] "" substr(string, 1, columns - current_length);
-        string_index = columns - current_length;
+        array[array_index++] = array[array_index] "" substr(string, 1, columns - current_length);
+        string_index = columns - current_length + 1;
     }
 
-#print string_index " " current_length
     for (; string_index <= length(string); string_index += columns) {
-        new_string = substr(string, string_index, columns);
-        gsub(/[[:space:]]*$/, "", new_string);
-        array[current_length] = new_string;
-
-        if (string_index < length(string)) {
-            current_length++;
-        }
+        array[array_index++] = substr(string, string_index, columns);
     }
+
+    return array[--array_index];
 }
+
 
 function fold(array,columns,string) {
 
@@ -95,7 +104,7 @@ function fold(array,columns,string) {
 
     string = string " EOF";
     array_index = length(array);
-    current_length = length(array[array_index]);
+    current_length = lengthCounter(array[array_index]);
 
     if (current_length > 0) {
         if (current_length + 2 < columns) {
@@ -110,18 +119,22 @@ function fold(array,columns,string) {
     while (match(string, /[[:space:]]+/)) {
         new_string = substr(string, 1, RSTART + RLENGTH - 1);
 
-        if (length(new_string) >= columns) {
-            if (length(placeholder_string) > 0 && length(array[array_index]) + length(placeholder_string) < columns) {
+        new_string_length = lengthCounter(new_string);
+        placeholder_string_length = lengthCounter(placeholder_string);
+
+        if (new_string_length - 2 >= columns) {
+            if (placeholder_string_length > 0 && lengthCounter(array[array_index]) + placeholder_string_length < columns) {
                 array[array_index] = array[array_index] "" placeholder_string;
             } else {
+                if (placeholder_string_length > 0) {
+                    new_string = " " new_string;
+                }
+
                 new_string = placeholder_string "" new_string;
             }
 
-            placeholder_string = "";
-            wrap(array, columns, new_string);
-            continue
-        } else if (length(new_string) + length(placeholder_string) >= columns) {
-            gsub(/[[:space:]]*$/, "", placeholder_string);
+            placeholder_string = wrap(array, columns, new_string);
+        } else if (new_string_length + placeholder_string_length - 2 >= columns) {
             array[array_index++] = placeholder_string;
             placeholder_string = "";
             continue;
@@ -129,12 +142,32 @@ function fold(array,columns,string) {
             placeholder_string = placeholder_string "" new_string;
         }
 
-        string = substr(string, RSTART + RLENGTH);
+        string = substr(string, RSTART + RLENGTH );
     }
 
     if (length(placeholder_string) > 0) {
-        array[array_index] = substr(placeholder_string, 1, length(placeholder_string) - 1);
+        array[array_index] = substr(placeholder_string, 1);
     }
 
     placeholder_string = "";
+    new_string_length = 0;
+    placeholder_string_length = 0;
+
 }
+
+function lengthCounter(string) {
+    gsub(/\033\[[0-9;]*m/, "", string);
+    return length(string);
+}
+
+# function colorCounter(new_string) {
+#     # regex = "(^[[|\e\[|\033\[).*m)";
+#     new_string = colors
+#     # gsub(regex, "", new_string);
+
+#     print length(colors) "   =   " colors;
+#     regexpr = "\\033[";
+
+#     gsub("\\033[", "ge", colors);
+#     print length(colors) "   =   " colors;
+# }
