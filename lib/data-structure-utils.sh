@@ -84,3 +84,60 @@ function stack() {
 
     return 0;
 }
+
+function linkedStrings() {
+
+    local OPTARG OPT KEY STRING;
+    local -a KEYS VALUES;
+    local -n REFERENCE;
+    local -i OPTIND;
+    local -A STRING_PROPERTIES;
+
+    while getopts :s:v:f: OPT; do
+        case ${OPT} in
+            f|s|v) STRING_PROPERTIES["${OPT}"]="${OPTARG}";;
+        esac
+    done
+
+    shift "$((OPTIND - 1))";
+    fieldManager -d '=' -s "${STRING_PROPERTIES["s"]}";
+    REFERENCE="${FIELDS[0]}";
+    KEY="${FIELDS[1]}";
+
+    KEYS=($(fieldManager -pu "${KEY}"));
+    VALUES=($(fieldManager -pu "${REFERENCE[${KEY}]}"));
+
+    if [[ "${#VALUES[@]}" -eq "${#KEYS[@]}" ]]; then
+        if [[ -n "${STRING_PROPERTIES["v"]}" ]]; then
+            fieldManager "${STRING_PROPERTIES["v"]}";
+            STRING_PROPERTIES["key"]="${FIELDS[0]}";
+            STRING_PROPERTIES["value"]="${FIELDS[1]}";
+            STRING_PROPERTIES["defaults"]="${FIELDS[2]}";
+        fi
+
+        for ((OPTIND=0; OPTIND < "${#KEYS[@]}"; OPTIND++)); do
+
+            if [[ -n "${STRING_PROPERTIES["f"]}" ]]; then
+                if [[ "${VALUES["${OPTIND}"]}" == "${STRING_PROPERTIES["f"]}" ]]; then
+                    echo "${KEYS["${OPTIND}"]}";
+                    return 0;
+                fi
+            else
+                if [[ "${KEYS["${OPTIND}"]}" == "${STRING_PROPERTIES["key"]}" ]]; then
+                    STRING+="${STRING_PROPERTIES["value"]}";
+                elif [[ -n "${STRING_PROPERTIES["defaults"]}" ]]; then
+                    STRING+="${STRING_PROPERTIES["defaults"]}";
+                else
+                    STRING+="${VALUES["${OPTIND}"]}";
+                fi
+
+                if [[ "$((${OPTARG} + 1))" -ne "${#KEYS[@]}" ]]; then
+                    STRING+=",";
+                fi
+            fi
+        done
+    fi
+
+    echo "${STRING:0:(-1)}";
+    return 0;
+}

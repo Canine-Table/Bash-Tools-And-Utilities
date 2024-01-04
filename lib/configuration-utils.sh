@@ -24,22 +24,48 @@ function database() {
     local DATABASE="${LIB_DIR}/../etc/db.json";
     local -i OPTIND;
     local OPT OPTARG;
-
-    local -A BOOLEAN=(
-        ["--sort-keys"]="true"
-        ["--raw-output,--join-output"]="true,true"
-        ["--monochrome-output,--color-output"]="true,false"
-        ["--indent,--tab"]="true=4,false"
+    local -a PARAMETERS;
+    local -A ARGUMENTS=(
+        ["indent"]="4"
     );
 
-    while getopts :i:d:s:q:mpu OPT; do
+    local -A BOOLEAN=(
+        ["sort-keys"]="true"
+        ["raw-output,join-output"]="false,true"
+        ["monochrome-output,color-output"]="false,true"
+        ["indent,tab"]="true,false"
+    );
+
+    while getopts :p: OPT; do
         case ${OPT} in
-            u) FIELD_PROPERTIES["unset"]="true";;
+            p) ARGUMENTS["p"]="${OPTARG}";;
         esac
     done
 
     shift "$((OPTIND - 1))";
 
+    if [[ -n "${ARGUMENTS["p"]}" ]]; then
+        ARGUMENTS["type"]="$(jq --raw-output ".${ARGUMENTS["p"]} | type" "${DATABASE}")";
+    else
+        awkDynamicBorders -l 'Missing Argument' -c 'Please provide json path';
+        return 1;
+    fi
+
+    for OPT in "${!BOOLEAN[@]}"; do
+        OPTARG="$(linkedStrings -f 'true' -s "BOOLEAN=${OPT}")";
+        PARAMETERS+=("--${OPTARG}");
+    
+        if [[ -n "${ARGUMENTS[${OPTARG}]}" ]]; then
+            PARAMETERS+=("${ARGUMENTS[${OPTARG}]}");
+        fi
+    done
+
+
+    if [[ "${ARGUMENTS["type"]}" == 'array' ]]; then
+        ARGUMENTS["p"]+='[]';
+    fi
+
+    jq "${PARAMETERS[@]}" ".${ARGUMENTS["p"]}" "${DATABASE}";
 
     return 0;
 }
