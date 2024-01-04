@@ -76,7 +76,6 @@ function characterString(count,character) {
     return string;
 }
 
-
 function wrap(array,columns,string) {
 
     array_index = length(array);
@@ -94,7 +93,6 @@ function wrap(array,columns,string) {
 
     return array[--array_index];
 }
-
 
 function fold(array,columns,string) {
 
@@ -159,15 +157,3 @@ function lengthCounter(string) {
     gsub(/\033\[[0-9;]*m/, "", string);
     return length(string);
 }
-
-# function colorCounter(new_string) {
-#     # regex = "(^[[|\e\[|\033\[).*m)";
-#     new_string = colors
-#     # gsub(regex, "", new_string);
-
-#     print length(colors) "   =   " colors;
-#     regexpr = "\\033[";
-
-#     gsub("\\033[", "ge", colors);
-#     print length(colors) "   =   " colors;
-# }

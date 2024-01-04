@@ -77,28 +77,72 @@ function awkCompletion() {
 }
 
 
-function awkBorder() {
+awkDynamicBorders() {
 
-    local OPT OPTARG ARR;
+    function setCommands() {
+        fieldManager "${OPTARG}";
+        COMMANDS+=("${FIELDS[@]}")
+        return 0;
+    }
+
     local -i OPTIND;
-    local -a DOCUMENTS;
-    local -Ai BORDER_PROPERTIES=(
-        ["lines"]="$(tput lines)"
+    local OPT OPTARG;
+    local -a COMMANDS PARAMETERS;
+    local -A BORDER_PROPERTIES=(
+        ["label"]=""
         ["columns"]="$(tput cols)"
-        ["leftMargin"]="1"
-        ["leftPadding"]="1"
-        ["rightMargin"]="1"
-        ["rightPadding"]="1"
+        ["wordWrap"]="false"
+        ["style"]="single"
     );
 
-    for ARR in "${@}"; do
-        [[ -f "${ARR}" && -r "${ARR}" ]] && DOCUMENTS+=("$(cat "${ARR}")") || DOCUMENTS+=("${ARR}");
+    while getopts :s:l:c:C:W OPT; do
+        case ${OPT} in
+            l) BORDER_PROPERTIES["label"]="${OPTARG}";;
+            s) BORDER_PROPERTIES["style"]="$(awkCompletion "${OPTARG}" {"single","double"})";;
+            c) setCommands;;
+            W) BORDER_PROPERTIES["wordWrap"]="true";;
+            C) [[ ${OPTARG} =~ ^[[:digit:]]+$ && "${OPTARG}" -gt 6 && "${OPTARG}" -lt "$(tput cols)" ]] && BORDER_PROPERTIES["columns"]="${OPTARG}";;
+        esac
     done
 
-    for ((OPTIND=0; OPTIND < "${#DOCUMENTS[@]}"; OPTIND++)); do
-        echo -e "\n\n${DOCUMENTS["${OPTIND}"]}\n\n" | awk -v properties="${BORDER_PROPERTIES[*]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/borders.awk"
-    done
+    shift "$((OPTIND - 1))";
+
+    if [[ -n "${COMMANDS[@]}" ]]; then
+        for ((OPTIND=0; OPTIND < "${#COMMANDS[@]}"; OPTIND++)); do
+
+            if [[ "${OPTIND}" -eq 0 ]]; then
+                if [[ -n "${BORDER_PROPERTIES["label"]}" ]]; then
+                    PARAMETERS+=('-v' "label=${BORDER_PROPERTIES["label"]}");
+                else
+                    PARAMETERS+=("-v" "header=true");
+                fi
+            fi
+
+            if [[ "$((OPTIND + 1))" -eq "${#COMMANDS[@]}" ]]; then
+                PARAMETERS+=("-v" "footer=true");
+            fi
+
+            if command -v "$(cut -d ' ' -f 1 <<< "${COMMANDS["${OPTIND}"]}")" &> '/dev/null'; then
+                COMMANDS["${OPTIND}"]="$(eval "${COMMANDS["${OPTIND}"]}")";
+            elif [[ -f "${COMMANDS["${OPTIND}"]}" && -r "${COMMANDS["${OPTIND}"]}" ]]; then
+                COMMANDS["${OPTIND}"]="$(cat "${COMMANDS["${OPTIND}"]}")";
+            fi
+
+            if "${BORDER_PROPERTIES["wordWrap"]}"; then
+                PARAMETERS+=("-v" "wordWrap=${BORDER_PROPERTIES["wordWrap"]}");
+            fi
+
+            PARAMETERS+=("-v" "style=${BORDER_PROPERTIES["style"]}");
+
+            echo -n "${COMMANDS["${OPTIND}"]}" | awk "${PARAMETERS[@]}" -v columns="${BORDER_PROPERTIES["columns"]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/dynamic-border.awk" 2> '/dev/null';
+
+            if [[ -n "${PARAMETERS[@]}" ]]; then
+                unset PARAMETERS;
+            fi
+        done
+    else
+        return 1;
+    fi
 
     return 0;
 }
-
