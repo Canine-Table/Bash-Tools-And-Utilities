@@ -88,39 +88,81 @@ function stack() {
 function linkedStrings() {
 
     local OPTARG OPT KEY STRING;
-    local -a KEYS VALUES;
+    local -a KEYS VALUES HASH_MAP;
     local -n REFERENCE;
-    local -i OPTIND;
-    local -A STRING_PROPERTIES;
+    local -i OPTIND COUNT;
+    local -A STRING_PROPERTIES=(
+        ["q"]="false"
+        ["a"]="false"
+    );
 
-    while getopts :s:v:f: OPT; do
+    while getopts :f:v:aq OPT; do
         case ${OPT} in
-            f|s|v) STRING_PROPERTIES["${OPT}"]="${OPTARG}";;
+            f|v) STRING_PROPERTIES["${OPT}"]="${OPTARG}";;
+            q|a) STRING_PROPERTIES["${OPT}"]="true";;
         esac
     done
 
     shift "$((OPTIND - 1))";
-    fieldManager -d '=' -s "${STRING_PROPERTIES["s"]}";
+    fieldManager -d '=' -s "${STRING_PROPERTIES["v"]}";
     REFERENCE="${FIELDS[0]}";
-    KEY="${FIELDS[1]}";
+    COUNT="${#REFERENCE[@]}";
 
+    for OPT in "${!REFERENCE[@]}"; do
+        if [[ -n "${STRING_PROPERTIES["f"]}" && -z "${FIELDS[1]}" ]]; then
+            ((COUNT--));
+            fieldManager "${REFERENCE["${OPT}"]}";
+
+            for ((OPTIND=0; OPTIND < "${#FIELDS[@]}"; OPTIND++)); do
+                if [[ "${FIELDS["${OPTIND}"]}" == "${STRING_PROPERTIES["f"]}" ]]; then
+                    fieldManager "${OPT}";
+                    "${STRING_PROPERTIES["a"]}" && REFERENCE["found"]="${FIELDS["${OPTIND}"]}";
+                    ! "${STRING_PROPERTIES["q"]}" && echo "${FIELDS["${OPTIND}"]}";
+                    return 0;
+                fi
+            done
+
+            if [[ "${COUNT}" -eq 0 ]]; then
+                ! "${STRING_PROPERTIES["q"]}" && awkDynamicBorders -l 'No Matches Found' -c "None of the keys in the hash map contained '${STRING_PROPERTIES["f"]}' as a value.";
+                return 1;
+            fi
+        else
+            HASH_MAP+=($(fieldManager -p "${OPT}"));
+        fi
+    done
+
+    fieldManager -s "${FIELDS[1]}";
+
+    if STRING_PROPERTIES["key"]="$(awkCompletion -q "${FIELDS[0]}" "${HASH_MAP[@]}")"; then
+        STRING_PROPERTIES["value"]="${FIELDS[1]}";
+        STRING_PROPERTIES["defaults"]="${FIELDS[2]}";
+        
+        for OPT in "${!REFERENCE[@]}"; do
+            grep -Pq "^(${STRING_PROPERTIES["key"]})$" <(fieldManager -pu "${OPT}") && KEY="${OPT}";
+        done
+    else
+        if [[ -z "${STRING_PROPERTIES["f"]}" ]]; then
+            ! "${STRING_PROPERTIES["q"]}" && awkDynamicBorders -l 'Invalid Key' -c "The key '${FIELDS[0]}' has not been declared within the hash map.";
+            return 2;
+        fi
+    fi
+
+    unset HASH_MAP;
     KEYS=($(fieldManager -pu "${KEY}"));
     VALUES=($(fieldManager -pu "${REFERENCE[${KEY}]}"));
 
     if [[ "${#VALUES[@]}" -eq "${#KEYS[@]}" ]]; then
-        if [[ -n "${STRING_PROPERTIES["v"]}" ]]; then
-            fieldManager "${STRING_PROPERTIES["v"]}";
-            STRING_PROPERTIES["key"]="${FIELDS[0]}";
-            STRING_PROPERTIES["value"]="${FIELDS[1]}";
-            STRING_PROPERTIES["defaults"]="${FIELDS[2]}";
-        fi
-
         for ((OPTIND=0; OPTIND < "${#KEYS[@]}"; OPTIND++)); do
-
             if [[ -n "${STRING_PROPERTIES["f"]}" ]]; then
                 if [[ "${VALUES["${OPTIND}"]}" == "${STRING_PROPERTIES["f"]}" ]]; then
-                    echo "${KEYS["${OPTIND}"]}";
-                    return 0;
+                    "${STRING_PROPERTIES["a"]}" && REFERENCE["found"]="${KEYS["${OPTIND}"]}";
+                    ! "${STRING_PROPERTIES["q"]}" && echo "${KEYS["${OPTIND}"]}";
+                    return 0
+                fi
+
+                if [[ "$((${OPTIND} + 1))" -eq "${#KEYS[@]}" ]]; then
+                    ! "${STRING_PROPERTIES["q"]}" && awkDynamicBorders -l 'No Matches Found' -c "the Key does not have a value that matches the value '${STRING_PROPERTIES["f"]}' within the hash map.";
+                    return 3;
                 fi
             else
                 if [[ "${KEYS["${OPTIND}"]}" == "${STRING_PROPERTIES["key"]}" ]]; then
@@ -130,14 +172,15 @@ function linkedStrings() {
                 else
                     STRING+="${VALUES["${OPTIND}"]}";
                 fi
-
-                if [[ "$((${OPTARG} + 1))" -ne "${#KEYS[@]}" ]]; then
+                
+                if [[ "$((${OPTIND} + 1))" -ne "${#KEYS[@]}" ]]; then
                     STRING+=",";
                 fi
             fi
         done
     fi
 
-    echo "${STRING:0:(-1)}";
+    REFERENCE["${KEY}"]="${STRING}";
+    ! "${STRING_PROPERTIES["q"]}" && echo "${REFERENCE["${KEY}"]}";
     return 0;
 }

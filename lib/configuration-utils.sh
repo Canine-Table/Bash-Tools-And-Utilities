@@ -24,7 +24,7 @@ function database() {
     local DATABASE="${LIB_DIR}/../etc/db.json";
     local -i OPTIND;
     local OPT OPTARG;
-    local -a PARAMETERS;
+
     local -A ARGUMENTS=(
         ["indent"]="4"
     );
@@ -36,23 +36,25 @@ function database() {
         ["indent,tab"]="true,false"
     );
 
-    while getopts :p: OPT; do
+    while getopts :c:p: OPT; do
         case ${OPT} in
-            p) ARGUMENTS["p"]="${OPTARG}";;
+            p|s|n) ARGUMENTS["${OPT}"]="${OPTARG}";;
+            c) linkedStrings -v "BOOLEAN=${OPTARG},true,false";;
+
         esac
     done
 
     shift "$((OPTIND - 1))";
 
     if [[ -n "${ARGUMENTS["p"]}" ]]; then
-        ARGUMENTS["type"]="$(jq --raw-output ".${ARGUMENTS["p"]} | type" "${DATABASE}")";
+        ARGUMENTS["type"]="$(jq --raw-output "${ARGUMENTS["p"]} | type" "${DATABASE}")";
     else
         awkDynamicBorders -l 'Missing Argument' -c 'Please provide json path';
         return 1;
     fi
 
     for OPT in "${!BOOLEAN[@]}"; do
-        OPTARG="$(linkedStrings -f 'true' -s "BOOLEAN=${OPT}")";
+        OPTARG="$(linkedStrings -f 'true' -v "BOOLEAN=${OPT}")";
         PARAMETERS+=("--${OPTARG}");
     
         if [[ -n "${ARGUMENTS[${OPTARG}]}" ]]; then
@@ -60,41 +62,16 @@ function database() {
         fi
     done
 
+#    echo "${PARAMETERS[@]}"
+    if [[ -n "${ARGUMENTS["n"]}" ]]; then
+        :
+    else
+        if [[ "${ARGUMENTS["type"]}" == 'array' ]]; then
+            ARGUMENTS["p"]+="[${ARGUMENTS["s"]}]";
+        fi
 
-    if [[ "${ARGUMENTS["type"]}" == 'array' ]]; then
-        ARGUMENTS["p"]+='[]';
+        jq "${PARAMETERS[@]}" "${ARGUMENTS["p"]}" "${DATABASE}";
     fi
 
-    jq "${PARAMETERS[@]}" ".${ARGUMENTS["p"]}" "${DATABASE}";
-
-    return 0;
-}
-
-
-function parameterExpansion() {
-
-    [[ -z "${PARAMETER_EXPANSION}" ]] || unset PARAMETER_EXPANSION;
-    declare -ag PARAMETER_EXPANSION;
-
-    local -A EXPANSION;
-    local -i OPTIND;
-    local E;
-    local -a KEYS VALUES
-
-    for E in "${!EXPANSION[@]}"; do
-        KEYS=($(fieldManager -pu -s "${E}"));
-        VALUES=($(fieldManager -pu -s "${EXPANSION["${E}"]}"));
-
-        for ((OPTIND=0; OPTIND < "${#KEYS[@]}"; OPTIND++)); do
-            fieldManager -d '=' -s "${VALUES["${OPTIND}"]}";
-            if "${FIELDS[0]}"; then
-                PARAMETER_EXPANSION+=("${KEYS["${OPTIND}"]}");
-                [[ -n "${FIELDS[1]}" ]] && PARAMETER_EXPANSION+=("${FIELDS[1]}");
-                break;
-            fi
-        done
-    done
-
-    echo "${PARAMETER_EXPANSION[@]}";
     return 0;
 }
