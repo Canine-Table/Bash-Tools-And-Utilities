@@ -76,7 +76,6 @@ function awkCompletion() {
     return 0;
 }
 
-
 awkDynamicBorders() {
 
     function setCommands() {
@@ -144,5 +143,74 @@ awkDynamicBorders() {
         return 1;
     fi
 
+    return 0;
+}
+
+function awkGetOptions() {
+
+    local OPTION KEY VALUE;
+
+    for VALUE in {REMAINDER,KWARGS}; do
+        grep -q "${VALUE}" <(declare -p) || unset "${VALUE}";
+    done
+
+    declare -ag REMAINDER;
+    declare -Ag KWARGS;
+    local -a GET_OPTIONS;
+
+    mapfile -t GET_OPTIONS < <(awk -v options="${1}" -f "${LIB_DIR}/awk-lib/get-options.awk" -v argv="${@}" 2> '/dev/null');
+
+    for OPTION in "${GET_OPTIONS[@]}"; do
+        if grep -q 'EOF' <<< "${OPTION}"; then
+            if [[ -n "${OPTION:4}" ]]; then
+                fieldManager -d ':' "${OPTION:4}";
+                REMAINDER=("${FIELDS[@]}");
+            fi
+        else
+            fieldManager -d '=' "${OPTION}";
+            if [[ -n  "${FIELDS[0]}" ]]; then
+                VALUE="${FIELDS[1]}";
+                fieldManager "${FIELDS[0]}";
+
+                for KEY in "${FIELDS[@]}"; do
+                    KWARGS["${KEY}"]="${VALUE:-"true"}";
+                done
+            fi
+        fi
+    done
+
+    return 0;
+}
+
+function awkFieldManager {
+
+    grep -q 'FIELDS' <(declare -p) || unset FIELDS;
+
+    declare -ag FIELDS;
+    local -A KWARGS;
+    local -i INDEX;
+
+    awkGetOptions 'list,l|unset,u|print,p|delimiter,d:quote,q:separator,s:index,i:' "${@}";
+
+    local -A FIELD_PROPERTIES=(
+        ["quote"]="$(awkCompletion -q "${KWARGS["quote"]}" {'",'double,"',"single}" quotes")"
+        ["delimiter"]="${KWARGS["delimiter"]:-","}"
+        ["separator"]="${KWARGS["separator"]:-"\\n"}"
+        ["print"]="${KWARGS["print"]:-"false"}"
+        ["list"]="${KWARGS["list"]:-"false"}"
+        ["unset"]="${KWARGS["unset"]:-"false"}"
+        ["index"]="$([[ ${KWARGS["index"]} =~ ^((-)?[[:digit:]]+)$ ]] && printf "${KWARGS["index"]}")"
+    );
+
+    unset KWARGS;
+    mapfile -t FIELDS < <(awk -v separator="${FIELD_PROPERTIES["separator"]}" -v delimiter="${FIELD_PROPERTIES["delimiter"]}" -v quote="${FIELD_PROPERTIES["quote"]}" -f "${LIB_DIR}/awk-lib/field-manager.awk" <<< "${REMAINDER[@]}" 2> '/dev/null');
+
+    "${FIELD_PROPERTIES["print"]}" && echo "${FIELDS[*]}";
+    [[ -n "${FIELD_PROPERTIES["index"]}" && -n "${FIELDS[${FIELD_PROPERTIES["index"]}]}" ]] && printf "${FIELDS[${FIELD_PROPERTIES["index"]}]}";
+    "${FIELD_PROPERTIES["list"]}" && for ((INDEX=0; INDEX < "${#FIELDS[@]}"; INDEX++)); do 
+        printf "${FIELDS["${INDEX}"]}$([[ "$((INDEX + 1))" -ne "${#FIELDS[@]}" ]] && echo "\n")";
+    done
+
+    "${FIELD_PROPERTIES["unset"]}" && unset FIELDS;
     return 0;
 }

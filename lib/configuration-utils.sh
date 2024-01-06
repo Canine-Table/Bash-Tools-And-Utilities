@@ -24,50 +24,62 @@ function database() {
     local DATABASE="${LIB_DIR}/../etc/db.json";
     local -i OPTIND;
     local OPT OPTARG;
-
+    local -a VALUES;
     local -A ARGUMENTS=(
         ["indent"]="4"
-    );
-
-    local -A BOOLEAN=(
+        ["q"]="false"
+    ) BOOLEAN=(
         ["sort-keys"]="true"
         ["raw-output,join-output"]="false,true"
-        ["monochrome-output,color-output"]="false,true"
+        ["monochrome-output,color-output"]="true,false"
         ["indent,tab"]="true,false"
     );
 
-    while getopts :c:p: OPT; do
+    while getopts :s:v:c:p:q OPT; do
         case ${OPT} in
-            p|s|n) ARGUMENTS["${OPT}"]="${OPTARG}";;
+            p|s) ARGUMENTS["${OPT}"]="${OPTARG}";;
+            v) VALUES+=("${OPTARG}");;
+            q) ARGUMENTS["${OPT}"]="true";;
             c) linkedStrings -v "BOOLEAN=${OPTARG},true,false";;
-
         esac
     done
 
     shift "$((OPTIND - 1))";
 
-    if [[ -n "${ARGUMENTS["p"]}" ]]; then
-        ARGUMENTS["type"]="$(jq --raw-output "${ARGUMENTS["p"]} | type" "${DATABASE}")";
-    else
-        awkDynamicBorders -l 'Missing Argument' -c 'Please provide json path';
+    if ! jq --exit-status "${ARGUMENTS["p"]}" "${DATABASE}" &> '/dev/null'; then
+        ! "${ARGUMENTS["q"]}" && awkDynamicBorders -l 'Invalid Path' -c 'Please provide a json path that exists within your '${DATABASE}' file.';
         return 1;
     fi
 
+    [[ -n "${ARGUMENTS[s]}" ]] && ! [[ ${ARGUMENTS[s]} =~ ^([[:digit:]]+:[[:digit:]]+)$ ]] && unset "${ARGUMENTS[s]}";
+
+    if [[ -n "${ARGUMENTS["p"]}" ]]; then
+        ARGUMENTS["type"]="$(jq --raw-output "${ARGUMENTS["p"]} | type" "${DATABASE}")";
+    else
+        ! "${ARGUMENTS["q"]}" && awkDynamicBorders -l 'Missing Argument' -c 'Please provide json path';
+        return 2;
+    fi
+
     for OPT in "${!BOOLEAN[@]}"; do
-        OPTARG="$(linkedStrings -f 'true' -v "BOOLEAN=${OPT}")";
-        PARAMETERS+=("--${OPTARG}");
-    
+        OPTARG="$(linkedStrings -p -f 'true' -v "BOOLEAN=${OPT}")";
+        [[ -n "${OPTARG}" ]] && PARAMETERS+=("--${OPTARG}");
+
         if [[ -n "${ARGUMENTS[${OPTARG}]}" ]]; then
             PARAMETERS+=("${ARGUMENTS[${OPTARG}]}");
         fi
     done
+    
+    if [[ -n "${VALUES[@]}" ]]; then
+        if [[ "${ARGUMENTS["type"]}" == 'array' ]]; then
+            OPTARG="[$(fieldManager -pm -q 'double' -d ',' -i ' ' "${VALUES[@]}")]";
+        else
+            OPTARG="\"${VALUES[*]}\"";
+        fi
 
-#    echo "${PARAMETERS[@]}"
-    if [[ -n "${ARGUMENTS["n"]}" ]]; then
-        :
+        jq "${PARAMETERS[@]}" "${ARGUMENTS["p"]} = ${OPTARG}" "${DATABASE}" | sponge "${DATABASE}";
     else
         if [[ "${ARGUMENTS["type"]}" == 'array' ]]; then
-            ARGUMENTS["p"]+="[${ARGUMENTS["s"]}]";
+            ! [[ ${ARGUMENTS["p"]} =~ "\]$" ]] && ARGUMENTS["p"]+="[${ARGUMENTS["s"]}]";
         fi
 
         jq "${PARAMETERS[@]}" "${ARGUMENTS["p"]}" "${DATABASE}";

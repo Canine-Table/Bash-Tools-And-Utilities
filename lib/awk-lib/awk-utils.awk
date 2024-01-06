@@ -157,3 +157,4 @@ function lengthCounter(string) {
     gsub(/\033\[[0-9;]*m/, "", string);
     return length(string);
 }
+

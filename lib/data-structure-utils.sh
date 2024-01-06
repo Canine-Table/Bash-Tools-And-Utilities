@@ -94,12 +94,13 @@ function linkedStrings() {
     local -A STRING_PROPERTIES=(
         ["q"]="false"
         ["a"]="false"
+        ["p"]="false"
     );
 
-    while getopts :f:v:aq OPT; do
+    while getopts :f:v:aqp OPT; do
         case ${OPT} in
             f|v) STRING_PROPERTIES["${OPT}"]="${OPTARG}";;
-            q|a) STRING_PROPERTIES["${OPT}"]="true";;
+            p|q|a) STRING_PROPERTIES["${OPT}"]="true";;
         esac
     done
 
@@ -123,7 +124,7 @@ function linkedStrings() {
             done
 
             if [[ "${COUNT}" -eq 0 ]]; then
-                ! "${STRING_PROPERTIES["q"]}" && awkDynamicBorders -l 'No Matches Found' -c "None of the keys in the hash map contained '${STRING_PROPERTIES["f"]}' as a value.";
+                ! "${STRING_PROPERTIES["p"]}" && awkDynamicBorders -l 'No Matches Found' -c "None of the keys in the hash map contained '${STRING_PROPERTIES["f"]}' as a value.";
                 return 1;
             fi
         else
@@ -142,7 +143,7 @@ function linkedStrings() {
         done
     else
         if [[ -z "${STRING_PROPERTIES["f"]}" ]]; then
-            ! "${STRING_PROPERTIES["q"]}" && awkDynamicBorders -l 'Invalid Key' -c "The key '${FIELDS[0]}' has not been declared within the hash map.";
+            ! "${STRING_PROPERTIES["p"]}" && awkDynamicBorders -l 'Invalid Key' -c "The key '${FIELDS[0]}' has not been declared within the hash map.";
             return 2;
         fi
     fi
@@ -161,7 +162,7 @@ function linkedStrings() {
                 fi
 
                 if [[ "$((${OPTIND} + 1))" -eq "${#KEYS[@]}" ]]; then
-                    ! "${STRING_PROPERTIES["q"]}" && awkDynamicBorders -l 'No Matches Found' -c "the Key does not have a value that matches the value '${STRING_PROPERTIES["f"]}' within the hash map.";
+                    ! "${STRING_PROPERTIES["p"]}" && awkDynamicBorders -l 'No Matches Found' -c "the Key does not have a value that matches the value '${STRING_PROPERTIES["f"]}' within the hash map.";
                     return 3;
                 fi
             else
