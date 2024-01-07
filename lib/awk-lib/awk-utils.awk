@@ -215,3 +215,27 @@ function arrayIndexer(indexes, range) {
     delete ranges;
     return value;
 }
+
+function keyValuePairs(array) {
+    split("", keys, "");
+    split("", values, "");
+    key_value_indexes = -1;
+    array = substr(array, 1, length(array) - 1);
+
+    while (match(array, /\[.*\].*/)) {
+        indexes = substr(array, RSTART, RSTART + RLENGTH);
+        regexpr = "\" [.*].*";
+        gsub(regexpr, "\"", indexes);
+        split(indexes, key_value_pairs, "]=\"");
+        sub(/^\[/, "", key_value_pairs[1]);
+        regexpr = "\".*$";
+        sub(regexpr, "", key_value_pairs[2]);
+        key_value_indexes++;
+        keys[key_value_indexes] = key_value_pairs[1];
+        values[key_value_indexes] = key_value_pairs[2];
+        array = substr(array, RSTART + 1);
+    }
+
+    delete key_value_pairs;
+    return key_value_indexes;
+}

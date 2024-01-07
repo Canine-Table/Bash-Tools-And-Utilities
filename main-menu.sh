@@ -159,23 +159,18 @@ declare -A BOOLEAN=(
     ["indent,tab"]="true,false"
 );
 
-
 function awkLinkedStrings() {
 
-    return 0;
+    local -a REMAINDER;
+    local -A KWARGS;
+
+    awkGetOptions 'string,s:array,a:' -- "${@}";
+
+    local -A STRING_PROPERTIES=(
+        ["string"]="${KWARGS[string]}"
+    );
+
 }
-
-awkIndexer -- -g key -r '1:' 'BOOLEAN';
-
-#awkFieldManager -- -pl -i 1 -du ',' 'hello,world,this,is,tom';
-#echo {FIELDS[@]}
-
-#awkGetOptions 'good,g:help,h|link,l|print,p|arrow,a:docker,d:r:c:e:f:' -a 'hello' -d 'world du ie ' -hlp -g xyzs "gi" "fi ddie dj" "gge  ewuwi wwe wewe w eeewew";
-
-# function awkFieldManager() {
-
-#     return 0;
-# }
 
 #fruits
 #"$(awkCompletion -q "${@}" {raw-output,join-output}),true,false"

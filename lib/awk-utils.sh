@@ -11,66 +11,62 @@ function awkDescriptor() {
 
 function awkCompletion() {
 
-    local -i OPTIND;
-    local LIST OPT OPTARG;
-    local -a REGEX;
+    unsetVariables {REMAINDER,KWARGS};
+
+    local C COMPLETE;
+    local -a COMPLETION REMAINDER;
+    local -A SELECTION KWARGS;
+
+    awkGetOptions  'print,p|empty,e:match,m:noMatch,n:noList,l:' -- "${@}";
+
     local -A COMPLETION_PROPERTIES=(
-        ["a"]=""
-        ["e"]=""
-        ["n"]=""
-        ["A"]=""
-        ["print"]="true"
+        ["match"]="${KWARGS["match"]}"
+        ["print"]="${KWARGS["print"]:-"false"}"
+        ["empty"]="${KWARGS["empty"]:-"Please provide a string to match with for the list of options."}"
+        ["noList"]="${KWARGS["noList"]:-"Please provide a list of options to choose from."}"
+        ["moMatch"]="${KWARGS["moMatch"]}"
         ["matched"]="false"
-    ) CHOICES;
+    );
 
-    while getopts :a:A:e:n:q OPT; do
-        case ${OPT} in
-            q) COMPLETION_PROPERTIES["print"]="false";;
-            e|n|A|a) COMPLETION_PROPERTIES["${OPT}"]="${OPTARG}";;
-        esac
-    done
-
-    shift "$((OPTIND - 1))";
-
-    if [[ -z "${COMPLETION_PROPERTIES["a"]}" ]]; then
-        if [[ -n "${@}" ]]; then
-            COMPLETION_PROPERTIES["a"]="${1}";
-            shift;
+    if [[ -z "${COMPLETION_PROPERTIES["match"]}" ]]; then
+        if [[ -n "${REMAINDER[@]}" ]]; then
+            COMPLETION_PROPERTIES["match"]="${REMAINDER[0]}";
+            unset REMAINDER[0];
         else
-            "${COMPLETION_PROPERTIES["print"]}" && echo "${COMPLETION_PROPERTIES["A"]:-"Please provide a string to match with for the list of options."}";
+            "${COMPLETION_PROPERTIES["print"]}" && awkDynamicBorders -l "Empty String" -c "${COMPLETION_PROPERTIES["empty"]}";
             return 1;
         fi
     fi
 
-    if [[ -z "${@}" ]]; then
-        "${COMPLETION_PROPERTIES["print"]}" && echo "${COMPLETION_PROPERTIES["n"]:-"Please provide a list of options to choose from."}";
+    if [[ -z "${REMAINDER[@]}" ]]; then
+        "${COMPLETION_PROPERTIES["print"]}" && awkDynamicBorders -l "No List to provided" -c "${COMPLETION_PROPERTIES["noList"]}";
         return 2;
     fi
 
-    for OPT in "${@}"; do
-        fieldManager -d "," "${OPT}";
+    for C in "${REMAINDER[@]}"; do
+        awkFieldManager "${C}";
 
         if [[ "${#FIELDS[@]}" -gt 0 ]]; then
-            CHOICES["${FIELDS[1]:-${FIELDS[0]}}"]="${FIELDS[0]}";
-            LIST+=",${FIELDS[1]:-${FIELDS[0]}}";
+            SELECTION["${FIELDS[1]:-"${FIELDS[0]}"}"]="${FIELDS[0]}";
+            COMPLETE+=",${FIELDS[1]:-"${FIELDS[0]}"}";
         fi
     done
 
-    mapfile REGEX < <(fieldManager -pm -i ',' -d '\n' "${LIST:1}" | awk -f "${LIB_DIR}/awk-lib/completion.awk");
+   mapfile -t COMPLETION < <(awkFieldManager -g 'value' "${COMPLETE:1}" | awk -f "${LIB_DIR}/awk-lib/completion.awk");
 
-    for OPT in "${REGEX[@]}"; do
-        fieldManager -d "," "${OPT}";
+    for C in "${COMPLETION[@]}"; do
+        awkFieldManager "${C}";
 
-        if [[ ${COMPLETION_PROPERTIES["a"],,} =~ ${FIELDS[1],,} ]]; then
-            printf "${CHOICES[${FIELDS[0]}]}";
+        if [[ ${COMPLETION_PROPERTIES["match"],,} =~ ${FIELDS[1],,} ]]; then
+            printf "${SELECTION[${FIELDS[0]}]}";
             COMPLETION_PROPERTIES["matched"]="true";
             break;
         fi
     done
-
+    
     if ! "${COMPLETION_PROPERTIES["matched"]}"; then
-        "${COMPLETION_PROPERTIES["print"]}" && echo "${COMPLETION_PROPERTIES["e"]:-"${COMPLETION_PROPERTIES["a"]} did not match an option."}";
-        return 2;
+        "${COMPLETION_PROPERTIES["print"]}" && awkDynamicBorders -l "No Match Found" -c "${COMPLETION_PROPERTIES["noMatch"]:-"${COMPLETION_PROPERTIES["match"]} did not match an option."}";
+        return 3;
     fi
 
     return 0;
@@ -148,29 +144,26 @@ function awkDynamicBorders() {
 
 function awkGetOptions() {
 
+    unsetVariables {REMAINDER,KWARGS};
+
     local OPTION KEY VALUE;
-
-    for VALUE in {REMAINDER,KWARGS}; do
-        grep -q "${VALUE}" <(declare -p) || unset "${VALUE}";
-    done
-
     declare -ag REMAINDER;
     declare -Ag KWARGS;
-    local -a GET_OPTIONS;
+    local -a GET_OPTIONS FIELDS;
 
     mapfile -t GET_OPTIONS < <(awk -v options="${1}" -f "${LIB_DIR}/awk-lib/get-options.awk" -v argv="${@}" 2> '/dev/null');
 
     for OPTION in "${GET_OPTIONS[@]}"; do
         if grep -q 'EOF' <<< "${OPTION}"; then
             if [[ -n "${OPTION:4}" ]]; then
-                fieldManager -d ':' "${OPTION:4}";
+                mapfile -t FIELDS < <(awk -v separator="\\n" -v delimiter="▒" -f "${LIB_DIR}/awk-lib/field-manager.awk" <<< "${OPTION:4}" 2> '/dev/null');
                 REMAINDER=("${FIELDS[@]}");
             fi
         else
-            fieldManager -d '=' "${OPTION}";
+            mapfile -t FIELDS < <(awk -v separator="\n" -v delimiter="▓" -f "${LIB_DIR}/awk-lib/field-manager.awk" <<< "${OPTION}" 2> '/dev/null');
             if [[ -n  "${FIELDS[0]}" ]]; then
                 VALUE="${FIELDS[1]}";
-                fieldManager "${FIELDS[0]}";
+                mapfile -t FIELDS < <(awk -v separator="\\n" -v delimiter="░" -f "${LIB_DIR}/awk-lib/field-manager.awk" <<< "${FIELDS[0]}" 2> '/dev/null');
 
                 for KEY in "${FIELDS[@]}"; do
                     KWARGS["${KEY}"]="${VALUE:-"true"}";
@@ -182,34 +175,35 @@ function awkGetOptions() {
     return 0;
 }
 
-function awkFieldManager {
+function awkFieldManager() {
 
-    grep -q 'FIELDS' <(declare -p) || unset FIELDS;
+    unsetVariables {REMAINDER,FIELDS,KWARGS};
 
     declare -ag FIELDS;
     local -A KWARGS;
+    local -a REMAINDER;
     local -i INDEX;
 
-    awkGetOptions 'list,l|unset,u|print,p|delimiter,d:quote,q:separator,s:index,i:' "${@}";
+    awkGetOptions 'unset,u|print,p|delimiter,d:quote,q:separator,s:index,i:get,g:' -- "${@}";
 
     local -A FIELD_PROPERTIES=(
-        ["quote"]="$(awkCompletion -q "${KWARGS["quote"]}" {'",'double,"',"single}" quotes")"
         ["delimiter"]="${KWARGS["delimiter"]:-","}"
         ["separator"]="${KWARGS["separator"]:-"\\n"}"
         ["print"]="${KWARGS["print"]:-"false"}"
-        ["list"]="${KWARGS["list"]:-"false"}"
         ["unset"]="${KWARGS["unset"]:-"false"}"
-        ["index"]="$([[ ${KWARGS["index"]} =~ ^((-)?[[:digit:]]+)$ ]] && printf "${KWARGS["index"]}")"
+        ["index"]="${KWARGS["index"]}"
+        ["get"]="${KWARGS["get"]}"
     );
+
+    [[ ${KWARGS["quote"]} =~ ^(s(i(n(g(l(e)?)?)?)?)?)$ ]] && FIELD_PROPERTIES["quote"]="'";
+    [[ ${KWARGS["quote"]} =~ ^(d(o(u(b(l(e)?)?)?)?)?)$ ]] && FIELD_PROPERTIES["quote"]='"';
 
     unset KWARGS;
     mapfile -t FIELDS < <(awk -v separator="${FIELD_PROPERTIES["separator"]}" -v delimiter="${FIELD_PROPERTIES["delimiter"]}" -v quote="${FIELD_PROPERTIES["quote"]}" -f "${LIB_DIR}/awk-lib/field-manager.awk" <<< "${REMAINDER[@]}" 2> '/dev/null');
 
     "${FIELD_PROPERTIES["print"]}" && echo "${FIELDS[*]}";
-    [[ -n "${FIELD_PROPERTIES["index"]}" && -n "${FIELDS[${FIELD_PROPERTIES["index"]}]}" ]] && printf "${FIELDS[${FIELD_PROPERTIES["index"]}]}";
-    "${FIELD_PROPERTIES["list"]}" && for ((INDEX=0; INDEX < "${#FIELDS[@]}"; INDEX++)); do 
-        printf "${FIELDS["${INDEX}"]}$([[ "$((INDEX + 1))" -ne "${#FIELDS[@]}" ]] && echo "\n")";
-    done
+
+    [[ -n "${FIELD_PROPERTIES["index"]}" || -n "${FIELD_PROPERTIES["get"]}" ]] && awkIndexer -g "${FIELD_PROPERTIES["get"]}" -r "${FIELD_PROPERTIES["index"]}" -a 'FIELDS';
 
     "${FIELD_PROPERTIES["unset"]}" && unset FIELDS;
     return 0;
@@ -218,18 +212,48 @@ function awkFieldManager {
 function awkIndexer() {
 
     local STRING_ARRAY;
-    awkGetOptions 'get,g:range,r:array,a:' "${@}";
+    local -a REMAINDER;
+    local -A KWARGS;
+    local KEY_OR_VALUE;
+
+    awkGetOptions 'get,g:range,r:array,a:' -- "${@}";
 
     if ! STRING_ARRAY="$(declare -p "${KWARGS["array"]:-"${REMAINDER[0]}"}" 2> '/dev/null')"; then
         awkDynamicBorders -l "Undeclared Variable" -c "Please provide an array or hash map to index.\nThis variable '${KWARGS["array"]:-"${REMAINDER[0]}"}' has not been declared";
         return 1;
     fi
 
-    if ! awk -v key_or_value="$(awkCompletion -q "${KWARGS["get"]}" {"key,"keys,"value,"values})" -v index_range="${KWARGS["range"]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk" -v array="${STRING_ARRAY}"; then
+    local TYPE="$(awk '{print substr($2, 2)}' <<< "${STRING_ARRAY}")";
+
+    case "${TYPE}" in
+        A|a) ;;
+        *) awkDynamicBorders -l "Invalid Variable Type" -c "The variable type must be either an array (-a) or a hash map (-A).\n'-${TYPE}' is not a valid type."; return 2;;
+    esac
+
+    [[ "${KWARGS["get"]}" =~ ^(v(a(l(u(e(s)?)?)?)?)?)$ ]] && KEY_OR_VALUE="value";
+    [[ "${KWARGS["get"]}" =~ ^(k(e(y(s)?)?)?)$ ]] && KEY_OR_VALUE="key";
+
+    if ! awk -v key_or_value="${KEY_OR_VALUE}" -v index_range="${KWARGS["range"]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk" -v array="${STRING_ARRAY}"; then
         awkDynamicBorders -l "Uninitialized Variable" -c "Please an array or hash map to with at least 1 index.\nThis variable '${KWARGS["array"]:-"${REMAINDER[0]}"}' contains no values to index.";
-        return 2;
+        return 3;
     fi
 
     unset KWARGS REMAINDER;
+    return 0;
+}
+
+function awkUtilities() {
+
+    local -a AWK_LIBRARIES;
+    local KEY;
+
+    fileSystem -p "${LIB_DIR}/awk-lib" -t f -n 'name=*-utils.awk';
+
+    for KEY in "${!FOUND[@]}"; do
+        AWK_LIBRARIES+=("-f" "${FOUND["${KEY}"]}/${KEY}");
+    done
+
+    echo "${AWK_LIBRARIES[@]}";
+
     return 0;
 }

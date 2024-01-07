@@ -17,7 +17,7 @@ BEGIN {
                         sub_string = substr(ARGV[argument_index], character, 1);
 
                         if (kwargs[2] == sub_string) {
-                            string = kwargs[2] "," kwargs[1];
+                            string = kwargs[2] "░" kwargs[1];
 
                             if (length(ARGV[argument_index]) > 2) {
                                 gsub(sub_string, "", ARGV[argument_index])
@@ -26,7 +26,7 @@ BEGIN {
                             }
 
                             if (required  > 0) {
-                                string = string "=" ARGV[argument_index + 1];
+                                string = string "▓" ARGV[argument_index + 1];
                                delete ARGV[argument_index + 1];
                             }
 
@@ -42,9 +42,9 @@ BEGIN {
     }
 
     printf "EOF=";
-    for (argument_index = 2; argument_index <= ARGC; argument_index++) {
+    for (argument_index = 1; argument_index <= ARGC; argument_index++) {
         if (length(ARGV[argument_index]) > 0) {
-            remainder = remainder "" ARGV[argument_index] ":";
+            remainder = remainder "" ARGV[argument_index] "▒";
         }
     }
 
