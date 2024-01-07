@@ -76,7 +76,7 @@ function awkCompletion() {
     return 0;
 }
 
-awkDynamicBorders() {
+function awkDynamicBorders() {
 
     function setCommands() {
         fieldManager "${OPTARG}";
@@ -133,7 +133,7 @@ awkDynamicBorders() {
 
             PARAMETERS+=("-v" "style=${BORDER_PROPERTIES["style"]}");
 
-            echo -n "${COMMANDS["${OPTIND}"]}" | awk "${PARAMETERS[@]}" -v columns="${BORDER_PROPERTIES["columns"]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/dynamic-border.awk" 2> '/dev/null';
+            echo -en "${COMMANDS["${OPTIND}"]}" | awk "${PARAMETERS[@]}" -v columns="${BORDER_PROPERTIES["columns"]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/dynamic-border.awk" 2> '/dev/null';
 
             if [[ -n "${PARAMETERS[@]}" ]]; then
                 unset PARAMETERS;
@@ -212,5 +212,24 @@ function awkFieldManager {
     done
 
     "${FIELD_PROPERTIES["unset"]}" && unset FIELDS;
+    return 0;
+}
+
+function awkIndexer() {
+
+    local STRING_ARRAY;
+    awkGetOptions 'get,g:range,r:array,a:' "${@}";
+
+    if ! STRING_ARRAY="$(declare -p "${KWARGS["array"]:-"${REMAINDER[0]}"}" 2> '/dev/null')"; then
+        awkDynamicBorders -l "Undeclared Variable" -c "Please provide an array or hash map to index.\nThis variable '${KWARGS["array"]:-"${REMAINDER[0]}"}' has not been declared";
+        return 1;
+    fi
+
+    if ! awk -v key_or_value="$(awkCompletion -q "${KWARGS["get"]}" {"key,"keys,"value,"values})" -v index_range="${KWARGS["range"]}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk" -v array="${STRING_ARRAY}"; then
+        awkDynamicBorders -l "Uninitialized Variable" -c "Please an array or hash map to with at least 1 index.\nThis variable '${KWARGS["array"]:-"${REMAINDER[0]}"}' contains no values to index.";
+        return 2;
+    fi
+
+    unset KWARGS REMAINDER;
     return 0;
 }

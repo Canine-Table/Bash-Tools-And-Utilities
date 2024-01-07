@@ -7,5 +7,4 @@
             printf separator;
         }
     }
-
 }

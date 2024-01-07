@@ -158,3 +158,60 @@ function lengthCounter(string) {
     return length(string);
 }
 
+function notNull(value,default) {
+    if (length(value) > 0) {
+        default = value;
+    }
+    return default;
+}
+
+function absolute(value) {
+    return (value < 0 ? -value : value);
+}
+
+function arrayIndexer(indexes, range) {
+    if (indexes !~ /^[[:digit:]]+$/) {
+        exit 1;
+    }
+
+    if (indexes == 0) {
+        exit 2;
+    }
+
+    split(range, ranges, ":");
+
+    if (length(ranges) < 2) {
+        ranges[2] = ranges[1];
+    }
+
+    for (range_index = 1; range_index <= 3; range_index++) {
+        if (ranges[range_index] ~ /^\(-[[:digit:]]+\)$/) {
+            value = indexes + substr(ranges[range_index], 2, length(ranges[range_index]) - 2);
+        } else if (ranges[range_index] ~ /^\((+)?[[:digit:]]+\)$/) {
+            value = substr(ranges[range_index], 2, length(ranges[range_index]) - 2);
+            sub(/+/, "", value);
+        } else if (ranges[range_index] ~ /^[[:digit:]]+$/) {
+            value = ranges[range_index];
+        } else {
+            value = "";
+        }
+
+        if (length(value) < 1) {
+            value = "";
+        } else if (int(value) < 1 || int(value) > indexes) {
+            value = int(absolute(value)) % int(indexes);
+        }
+
+        if (range_index ~ /^(1|3)$/) {
+            defaults = 1;
+        } else {
+            defaults = indexes;
+        }
+
+        ranges[range_index] = notNull(value, defaults);
+    }
+
+    value = ranges[1] "," ranges[2] "," ranges[3];
+    delete ranges;
+    return value;
+}

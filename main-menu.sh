@@ -139,11 +139,33 @@ function dialogFactory() {
 
 #dialogFactory
 
+ declare -a ARR=(
+    "A"
+    "B"
+    "C"
+    "A"
+    "B"
+    "C"
+    "A"
+    "B"
+    "C"
+
+)
+
+declare -A BOOLEAN=(
+    ["sort-keys"]="true"
+    ["raw-output,join-output"]="false,true"
+    ["monochrome-output,color-output"]="true,false"
+    ["indent,tab"]="true,false"
+);
+
+
 function awkLinkedStrings() {
 
     return 0;
 }
 
+awkIndexer -- -g key -r '1:' 'BOOLEAN';
 
 #awkFieldManager -- -pl -i 1 -du ',' 'hello,world,this,is,tom';
 #echo {FIELDS[@]}
