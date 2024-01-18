@@ -2,6 +2,10 @@
 
 function main() {
 
+    export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
+    source "${BIN_DIR}/../lib/configuration-utils.sh";
+    libraries;
+
     local CONFIG="${HOME}/.ssh/config";
 
     [[ -f "${CONFIG}" && -r "${CONFIG}" && "$(awk '{print $1}' <(du completion))" -gt 0 ]] || {

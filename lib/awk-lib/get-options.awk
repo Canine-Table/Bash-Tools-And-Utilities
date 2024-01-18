@@ -22,12 +22,12 @@ BEGIN {
                             if (length(ARGV[argument_index]) > 2) {
                                 gsub(sub_string, "", ARGV[argument_index])
                             } else {
-                               delete ARGV[argument_index];
+                                delete ARGV[argument_index];
                             }
 
                             if (required  > 0) {
                                 string = string "▓" ARGV[argument_index + 1];
-                               delete ARGV[argument_index + 1];
+                                delete ARGV[argument_index + 1];
                             }
 
                             print string;

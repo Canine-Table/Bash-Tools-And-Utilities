@@ -1,12 +1,11 @@
 #!/bin/bash
 
-grep -q 'BIN_DIR' <(export) || export BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
-
 function main() {
-
-    trap 'clear' SIGINT EXIT RETURN;
+    export | grep -q 'declare -x BIN_DIR=' || export BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
     source "${BIN_DIR}/../lib/configuration-utils.sh";
     libraries;
+
+    trap 'clear' SIGINT EXIT RETURN;
 
     while :; do
         if ! getDialog -v 'inputbox' -t 'ok=Install' -t 'title=recursive website installer,t'; then
@@ -29,7 +28,6 @@ function main() {
             getDialog -v 'msg' -t 'ok=continue,t' -t 'title=empty link,t' '\nPlease enter a link to download recursively.';
         fi
     done
-
     return 0;
 }
 

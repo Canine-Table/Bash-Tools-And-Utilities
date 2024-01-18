@@ -139,7 +139,7 @@ function dialogFactory() {
 
 #dialogFactory
 
- declare -a ARR=(
+declare -a ARR=(
     "A"
     "B"
     "C"
@@ -171,6 +171,12 @@ function awkLinkedStrings() {
     );
 
 }
+
+#substitution "${@}"
+# sourceDirectory s
+# echo ${s}
+
+#echo "${hi_DIR}"
 
 #fruits
 #"$(awkCompletion -q "${@}" {raw-output,join-output}),true,false"

@@ -1,14 +1,13 @@
-grep -q 'LIB_DIR' <(export) || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
-
+export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
 
 function libraries() {
     local FILE;
-
+    
     for FILE in ${LIB_DIR}/*.sh; do
         source "${FILE}";
     done
     
-    modifiableConfigurations
+    modifiableConfigurations;
     return 0;
 }
 

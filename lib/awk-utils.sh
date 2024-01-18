@@ -1,11 +1,10 @@
-grep -q 'LIB_DIR' <(export) || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
+export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
 
 function awkDescriptor() {
-
-    exec 9< <(echo "${@}");
-    awk -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f '/dev/fd/9';
-    exec 9<&-;
-
+    local TEMPORARY="$(mktemp)";
+    echo "${@}" > "${TEMPORARY}";
+    awk -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${TEMPORARY}";
+    rm "${TEMPORARY}";
     return 0;
 }
 
@@ -24,7 +23,7 @@ function awkCompletion() {
         ["print"]="${KWARGS["print"]:-"false"}"
         ["empty"]="${KWARGS["empty"]:-"Please provide a string to match with for the list of options."}"
         ["noList"]="${KWARGS["noList"]:-"Please provide a list of options to choose from."}"
-        ["moMatch"]="${KWARGS["moMatch"]}"
+        ["noMatch"]="${KWARGS["noMatch"]}"
         ["matched"]="false"
     );
 

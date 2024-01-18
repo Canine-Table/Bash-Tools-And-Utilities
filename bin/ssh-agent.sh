@@ -1,10 +1,9 @@
 #!/bin/bash
 
-grep -q 'BIN_DIR' <(export) || export BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
 
 function main() {
-
-    source "/usr/scripts/lib/configuration-utils.sh";
+    export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> '/dev/null' && pwd)";
+    source "${BIN_DIR}/../lib/configuration-utils.sh";
     libraries;
 
     local C;
