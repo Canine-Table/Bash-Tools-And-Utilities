@@ -8,9 +8,13 @@ function indexers() {
     local -a A=(
         'hello'
         'world is round,world'
+        'hello'
+        'world is round,world'
+        'hello'
+        'world is round,world'
     )
 
-    awkCompletion -s 'wo' "${A[@]}"
+awkIndexer -d A -g k -i 0::3
     return 0;
 
 }

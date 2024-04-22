@@ -1,7 +1,52 @@
 # Creates the LIB_DIR global variable if it does not already exist. Use this variable to access the absolute path of the library directory containing generic scripts.
 export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)";
 
+# The awkIndexer function processes arrays and associative arrays using awk by validating data types, parsing options, and fetching indexes based on provided parameters.
+function awkIndexer() {
 
+    # Declare local variables for options and field properties
+    local OPT OPTARG DATA;
+    local -i OPTIND;
+    local -A INDEXER_PROPERTIES;
+
+
+    # Nested function to check if the data type is valid
+    function dataChecker() {
+
+        # Check the type of the variable passed as an argument
+        case "$(declare -p "${OPTARG}" | awk '{sub(/declare -/, ""); print $1}')" in
+            *A*) INDEXER_PROPERTIES["${OPT}"]='A';;  # If associative array
+            *a*) INDEXER_PROPERTIES["${OPT}"]='a';;  # If array
+            *) awkDynamicBorders -l "Invalid Variable Type" -c "The variable type must be either an array (-a) or an associative array (-A)."; return 1;; # If neither, return an error
+        esac
+
+        # Extract the data from the variable passed as an argument
+        DATA="$(declare -p "${OPTARG}" | awk -v variable="declare -.* ${OPTARG}=" '{sub(variable, ""); print $0}')";
+        return 0;
+    }
+
+   # Parse options passed to the function
+    while getopts :g:d:i: OPT; do
+        case ${OPT} in
+            g) INDEXER_PROPERTIES["${OPT}"]="$(awkCompletion -s "${OPTARG}" 'key' 'value')";;  # Get key or value for indexing (defaults to both)
+            d) dataChecker;; # Check data type
+            i) [[ ${OPTARG} =~ ^[[:digit:]]*:[[:digit:]]*:[[:digit:]]*$ ]] && INDEXER_PROPERTIES["${OPT}"]="${OPTARG}";; # Set index range if it matches the pattern
+        esac
+    done
+
+    # Shift positional parameters by the number of options parsed
+    shift $((OPTIND - 1));
+
+    # Check if data was actually passed to the function
+    if ! awk -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk" -v array="${DATA}"; then
+        awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index.";
+        return 2;
+    fi
+
+    return 0; # Return success if everything is fine
+}
+
+# The awkCompletion function generates autocompletion suggestions based on a provided string and a list of options, utilizing an external awk script for processing.
 function awkCompletion() {
 
     # Declare local variables for options and field properties

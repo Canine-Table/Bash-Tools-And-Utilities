@@ -7,6 +7,10 @@ BEGIN {
     indexes = arrayIndexer(keyValuePairs(array), index_range);
     split(indexes, start_stop_skip, ",");
 
+    if (start_stop_skip[3] <= 0) {
+        start_stop_skip[3] = 1;
+    }
+
     for (range = start_stop_skip[1]; range <= start_stop_skip[2]; range += start_stop_skip[3]) {
         if (key_or_value == "key") {
             printf keys[range];
