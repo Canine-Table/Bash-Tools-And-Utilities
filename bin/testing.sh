@@ -5,16 +5,26 @@ function indexers() {
     source "${BIN_DIR}/../lib/configuration-utils.sh";
     libraries;
 
-    local -a A=(
-        'hello'
-        'world is round,world'
-        'hello'
-        'world is round,world'
-        'hello'
-        'world is round,world'
-    )
+    local -A A=(
+        ['x']="this"
+        ['y']='hello'
+        ['z']="world"
+    );
 
-awkIndexer -d A -g k -i 0::3
+
+    local -a B=(
+        "this"
+    );
+
+database -r -f '.systemInformation'
+
+#     isUniqueEntry -A B 'tis'
+#     isUniqueEntry -Q B 'th'
+
+#    isUniqueKey -Qqmp 'za=ss' -A A
+#    echo "${A[@]}"
+#    awkFieldManager -p  'a,hello,this,is,tom'
+
     return 0;
 
 }

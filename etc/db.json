@@ -1,0 +1,10 @@
+{
+    "systemInformation": {
+        "initSystem": "",
+        "packageManager": "",
+        "lastUpdated": 171381430
+    },
+    "scriptConfigurations": {
+        "loggingDirectory": "/var/log/scripts"
+    }
+}

@@ -9,7 +9,6 @@ function awkIndexer() {
     local -i OPTIND;
     local -A INDEXER_PROPERTIES;
 
-
     # Nested function to check if the data type is valid
     function dataChecker() {
 
@@ -17,7 +16,7 @@ function awkIndexer() {
         case "$(declare -p "${OPTARG}" | awk '{sub(/declare -/, ""); print $1}')" in
             *A*) INDEXER_PROPERTIES["${OPT}"]='A';;  # If associative array
             *a*) INDEXER_PROPERTIES["${OPT}"]='a';;  # If array
-            *) awkDynamicBorders -l "Invalid Variable Type" -c "The variable type must be either an array (-a) or an associative array (-A)."; return 1;; # If neither, return an error
+            *) INDEXER_PROPERTIES["E"]='true';;
         esac
 
         # Extract the data from the variable passed as an argument
@@ -26,10 +25,11 @@ function awkIndexer() {
     }
 
    # Parse options passed to the function
-    while getopts :g:d:i: OPT; do
+    while getopts :g:d:i:q OPT; do
         case ${OPT} in
             g) INDEXER_PROPERTIES["${OPT}"]="$(awkCompletion -s "${OPTARG}" 'key' 'value')";;  # Get key or value for indexing (defaults to both)
-            d) dataChecker;; # Check data type
+            d) [[ -n "${OPTARG}" ]] && dataChecker;; # Check data type
+            q) INDEXER_PROPERTIES["${OPT}"]='true';;
             i) [[ ${OPTARG} =~ ^[[:digit:]]*:[[:digit:]]*:[[:digit:]]*$ ]] && INDEXER_PROPERTIES["${OPT}"]="${OPTARG}";; # Set index range if it matches the pattern
         esac
     done
@@ -37,9 +37,14 @@ function awkIndexer() {
     # Shift positional parameters by the number of options parsed
     shift $((OPTIND - 1));
 
+    "${INDEXER_PROPERTIES["E"]:-false}" && {
+        "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Invalid Variable Type" -c "The variable type must be either an array (-a) or an associative array (-A)." >&2;
+        return 1; # If neither, return an error
+    }
+
     # Check if data was actually passed to the function
     if ! awk -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk" -v array="${DATA}"; then
-        awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index.";
+        awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index."  >&2;
         return 2;
     fi
 
@@ -73,13 +78,13 @@ function awkCompletion() {
         shift;
     else
         # If neither is provided, print an error message and return with code 1
-        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'Missing String' -c "echo ${COMPLETION_PROPERTIES["S"]:-"Please provide a string to match with for the list of options."}";
+        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'Missing String' -c "echo ${COMPLETION_PROPERTIES["S"]:-"Please provide a string to match with for the list of options."}" >&2;
         return 1;
     fi
 
     [[ -z "${@}" ]] && {
         # If no list is provided, print an error message and return with code 2
-        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'Missing List' -c "echo ${COMPLETION_PROPERTIES["L"]:-"Please provide a list of options to choose from."}";
+        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'Missing List' -c "echo ${COMPLETION_PROPERTIES["L"]:-"Please provide a list of options to choose from."}" >&2;
         return 2;
     }
 
@@ -111,7 +116,7 @@ function awkCompletion() {
 
     # If no match is found, print an error message and return with code 3
     if ! "${COMPLETION_PROPERTIES["matched"]:-false}"; then
-        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'No Match Found' -c "echo ${COMPLETION_PROPERTIES["E"]:-"${COMPLETION_PROPERTIES["s"]} did not match an option."}";
+        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'No Match Found' -c "echo ${COMPLETION_PROPERTIES["E"]:-"${COMPLETION_PROPERTIES["s"]} did not match an option."}" >&2;
         return 3;
     fi
 
@@ -125,11 +130,11 @@ function awkDynamicBorders() {
     local OPT OPTARG;
     local -i OPTIND;
     local -A BORDER_PROPERTIES;
-    local -a COMMANDS PARAMETERS;
+    local -a PAGES PARAMETERS;
 
    function setCommands() {
         awkFieldManager "${OPTARG}";
-        COMMANDS+=("${FIELDS[@]}");
+        PAGES+=("${FIELDS[@]}");
         return 0;
     }
 
@@ -168,10 +173,10 @@ function awkDynamicBorders() {
     # Shift positional parameters by the number of options parsed
     shift $((OPTIND - 1));
 
-    if [[ -n "${COMMANDS[@]}" ]]; then
+    if [[ -n "${PAGES[@]}" ]]; then
 
         # Apply border properties to the display content
-        for ((OPTIND=0; OPTIND < "${#COMMANDS[@]}"; OPTIND++)); do
+        for ((OPTIND=0; OPTIND < "${#PAGES[@]}"; OPTIND++)); do
 
             # Set header label or enable header
             if [[ "${OPTIND}" -eq 0 ]]; then
@@ -183,20 +188,20 @@ function awkDynamicBorders() {
             fi
 
             # Enable footer for the last display item
-            [[ "$((OPTIND + 1))" -eq "${#COMMANDS[@]}" ]] && PARAMETERS+=("-v" "footer=true");
+            [[ "$((OPTIND + 1))" -eq "${#PAGES[@]}" ]] && PARAMETERS+=("-v" "footer=true");
 
             # Apply word wrapping if enabled
             "${BORDER_PROPERTIES["W"]:-false}" && PARAMETERS+=("-v" "wordWrap=${BORDER_PROPERTIES["W"]}");
 
             # Process command output or file content
-            if command -v "$(printf "${COMMANDS["${OPTIND}"]}" | cut -d ' ' -f 1)" &> '/dev/null'; then
-                COMMANDS["${OPTIND}"]="$(eval "${COMMANDS["${OPTIND}"]}")";
-            elif [[ -f "${COMMANDS["${OPTIND}"]}" && -r "${COMMANDS["${OPTIND}"]}" ]]; then
-                COMMANDS["${OPTIND}"]="$(cat "${COMMANDS["${OPTIND}"]}")";
+            if command -v "$(printf "${PAGES["${OPTIND}"]}" | cut -d ' ' -f 1)" &> '/dev/null'; then
+                PAGES["${OPTIND}"]="$(eval "${PAGES["${OPTIND}"]}")";
+            elif [[ -f "${PAGES["${OPTIND}"]}" && -r "${PAGES["${OPTIND}"]}" ]]; then
+                PAGES["${OPTIND}"]="$(cat "${PAGES["${OPTIND}"]}")";
             fi
 
             # Apply the dynamic border using AWK
-            echo -en "${COMMANDS["${OPTIND}"]}" | awk "${PARAMETERS[@]}" \
+            echo -en "${PAGES["${OPTIND}"]}" | awk "${PARAMETERS[@]}" \
                 -v style="${BORDER_PROPERTIES['s']:-single}" \
                 -v columns="${BORDER_PROPERTIES['C']:-$(tput cols)}" \
                 -f "${BIN_DIR}/../lib/awk-lib/awk-utils.awk" \
@@ -269,7 +274,7 @@ function awkFieldManager() {
     mkfifo "${FIFO}";
 
     # Send input to AWK script and redirect output to FIFO
-    printf "${@}" | awk \
+    echo -en "${@}" | awk \
         -v separator="${FIELD_PROPERTIES['s']}" \
         -v delimiter="${FIELD_PROPERTIES['d']}" \
         -v quote="${FIELD_PROPERTIES['q']}" \
