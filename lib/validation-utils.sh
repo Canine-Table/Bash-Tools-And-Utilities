@@ -18,7 +18,6 @@ function initSystem() {
     local -i OPTIND;
     local -A INIT_PROPERTIES;
 
-
     # Loop through a list of known init system commands to detect which one is available
     # The loop breaks as soon as it finds a valid command, storing it in the associative array
     for OPT in 'initctl' 'rc-service' 'systemctl'; do

@@ -56,7 +56,7 @@ function append_path () {
 function isUniqueEntry() {
 
     # Initialize a flag variable and an associative array to store unique properties.
-    local OPT;
+    local OPT OPTARG;
     local -i OPTIND;
     local -A UNIQUE_PROPERTIES;
 
@@ -75,7 +75,12 @@ function isUniqueEntry() {
     shift $((OPTIND - 1));
 
     # Retrieve the attributes of the variable passed as the first argument.
-    local FLAGS="$(declare -p "${1}" | awk '{sub(/declare -/, ""); print $1}')";
+    local -r FLAGS="$(declare -p "${1}" 2> /dev/null | awk '{sub(/declare -/, ""); print $1}')";
+
+    [[ -z "${FLAGS}" ]] && {
+        "${UNIQUE_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Unintitialized Variable" -c "echo ${1} must be first be intitialized before being passed as an argument." >&2;
+        return 11;
+    }
 
     # Check if the first argument (indexed array) is provided.
     if [[ -z ${1} ]]; then
@@ -158,7 +163,7 @@ function isUniqueKey() {
     # Initialize local variables for options, arguments, and to store properties of uniqueness.
     local OPT OPTARG;
     local -i OPTIND;
-    local -A UNIQUE_PROPERTIES;
+    local -A UNIQUE_KEY_PROPERTIES;
     local -a FIELDS;
 
     # Parse options passed to the function. Options include:
@@ -171,8 +176,8 @@ function isUniqueKey() {
     # Parse options passed to the function
     while getopts :p:A:Qqm OPT; do
         case ${OPT} in
-            q|Q|m) UNIQUE_PROPERTIES["${OPT}"]='true';;
-            p|A) UNIQUE_PROPERTIES["${OPT}"]="${OPTARG}";;
+            q|Q|m) UNIQUE_KEY_PROPERTIES["${OPT}"]='true';;
+            p|A) UNIQUE_KEY_PROPERTIES["${OPT}"]="${OPTARG}";;
         esac
     done
 
@@ -180,55 +185,107 @@ function isUniqueKey() {
     shift $((OPTIND - 1));
 
     # Use awkFieldManager to split the key-value pair provided with the -p option.
-    [[ -n "${UNIQUE_PROPERTIES["p"]}" ]] && awkFieldManager -d '=' "${UNIQUE_PROPERTIES["p"]}";
+    [[ -n "${UNIQUE_KEY_PROPERTIES["p"]}" ]] && awkFieldManager -d '=' "${UNIQUE_KEY_PROPERTIES["p"]}";
 
     # Check if a valid key-value pair is provided. If not, display an error message and return with code 1.
     [[ "${#FIELDS[@]}" -ne 2 ]] && {
-        "${UNIQUE_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Key Value Pair Missing" -c "A value is required in the form of 'key=value' for the (-p) option." >&2;
+        "${UNIQUE_KEY_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Key Value Pair Missing" -c "A value is required in the form of 'key=value' for the (-p) option." >&2;
         return 1;
     }
 
     # Ensure the key is not empty or just whitespace. If it is, display an error message and return with code 2.
     [[ -z "${FIELDS[0]}" || "${FIELDS[0]}" =~ ^[[:space:]]+$ ]] && {
-        "${UNIQUE_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Null Key" -c "You cannot have a key that is empty." >&2;
+        "${UNIQUE_KEY_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Null Key" -c "You cannot have a key that is empty." >&2;
         return 2;
     }
 
     # Default to the first positional parameter as the associative array if -A is not provided.
-    "${UNIQUE_PROPERTIES["q"]:-false}" && OPTARG='-q' || unset OPTARG;
+    "${UNIQUE_KEY_PROPERTIES["q"]:-false}" && OPTARG='-q' || unset OPTARG;
 
     # Default to the first positional parameter as the associative array if -A is not provided.
-    UNIQUE_PROPERTIES["A"]="${UNIQUE_PROPERTIES["A"]:-${1}}";
+    UNIQUE_KEY_PROPERTIES["A"]="${UNIQUE_KEY_PROPERTIES["A"]:-${1}}";
 
     # If no associative array is specified, display an error message and return with code 3.
-    [[ -z "${UNIQUE_PROPERTIES["A"]}" ]] && {
-        "${UNIQUE_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Missing Associative Array" -c "You forgot to specify which associative you wish to modify/add to." >&2;
+    [[ -z "${UNIQUE_KEY_PROPERTIES["A"]}" ]] && {
+        "${UNIQUE_KEY_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Missing Associative Array" -c "You forgot to specify which associative you wish to modify/add to." >&2;
         return 3;
     }
 
+    [[ -z "$(declare -p "${UNIQUE_KEY_PROPERTIES["A"]}" 2> /dev/null | awk '{sub(/declare -/, ""); print $1}')" ]] && {
+        "${UNIQUE_KEY_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Unintitialized Associative Array" -c "echo ${UNIQUE_KEY_PROPERTIES["A"]} must be an intitialized associative array before being passed as an argument." >&2;
+        return 11;
+    }
+
     # Get the keys of the associative array using awkIndexer.
-    local -a KEYS=($(awkIndexer ${OPTARG} -g 'key' -d "${UNIQUE_PROPERTIES["A"]}"));
+
+    local -a KEYS=($(awkIndexer ${OPTARG} -g 'key' -d "${UNIQUE_KEY_PROPERTIES["A"]}"));
 
     # Set quiet mode for the isUniqueEntry function if the -m or -q option is provided.
-    ("${UNIQUE_PROPERTIES['m']:-false}" || "${UNIQUE_PROPERTIES['q']:-false}") && {
+    ("${UNIQUE_KEY_PROPERTIES['m']:-false}" || "${UNIQUE_KEY_PROPERTIES['q']:-false}") && {
         OPTARG='-q';
     } || {
         unset OPTARG;
     }
 
     # Check if the key is unique using isUniqueEntry. If it is unique or modify mode is enabled, add/update the key-value pair.
-    if OPT="$(isUniqueEntry ${OPTARG} -A KEYS "${FIELDS[0]}")" || "${UNIQUE_PROPERTIES['m']:-false}"; then
-        local -n REFERENCE="${UNIQUE_PROPERTIES["A"]}";
+    if "${UNIQUE_KEY_PROPERTIES['m']:-false}"; then
+        local -n REFERENCE="${UNIQUE_KEY_PROPERTIES["A"]}";
 
-        UNIQUE_PROPERTIES["K"]="${OPT:-${FIELDS[0]}}";
-        REFERENCE["${UNIQUE_PROPERTIES["K"]}"]="${FIELDS[1]}";
+        UNIQUE_KEY_PROPERTIES["K"]="${OPT:-${FIELDS[0]}}";
+        REFERENCE["${UNIQUE_KEY_PROPERTIES["K"]}"]="${FIELDS[1]}";
 
         # If in query mode, output the key-value pair.
-        "${UNIQUE_PROPERTIES['Q']:-false}" && {
-            echo "-$([[ ${#UNIQUE_PROPERTIES[K]} -gt 1 ]] && echo '-')${UNIQUE_PROPERTIES[K]}" "${REFERENCE[${UNIQUE_PROPERTIES[K]}]}";
+        "${UNIQUE_KEY_PROPERTIES['Q']:-false}" && {
+            echo "-$([[ ${#UNIQUE_KEY_PROPERTIES[K]} -gt 1 ]] && echo '-')${UNIQUE_KEY_PROPERTIES[K]}" "${REFERENCE[${UNIQUE_KEY_PROPERTIES[K]}]}";
         }
     fi
 
     # Return success.
+    return 0;
+}
+
+function typing() {
+    local -a TYPING;
+    local -A TYPING_PROPERTIES;
+    local -i T=0 OPTIND;
+
+    # Parse options passed to the function
+    while getopts :m:q OPT; do
+        case ${OPT} in
+            q) TYPING_PROPERTIES["${OPT}"]="true";;
+            m) TYPING_PROPERTIES["${OPT}"]="${OPTARG}";;
+        esac
+    done
+
+    # Shift positional parameters by the number of options parsed
+    shift $((OPTIND - 1));
+
+    local -r FLAGS="$(declare -p "${1}" 2> /dev/null | awk '{sub(/declare -/, ""); print $1}')";
+
+    [[ -z "${FLAGS}" ]] && {
+        "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Unintitialized Variable" -c "echo ${1} must be first be intitialized before being passed as an argument." >&2;
+        return 1;
+    }
+
+    for ((OPTIND=0; OPTIND < "${#FLAGS}"; OPTIND++)); do
+        case "${FLAGS:${OPTIND}:1}" in
+            a) TYPING+=('a');; # Indexed Array
+            A) TYPING+=('A');; # Associative Array
+            r) TYPING+=('r');; # readonly
+            n) TYPING+=('n');; # Named Reference
+            i) TYPING+=('i');; # Integral
+            u) TYPING+=('u');; # Upper
+            l) TYPING+=('l');; # Lower
+            x) TYPING+=('x');; # Exported
+        esac
+    done
+
+    if "${TYPING_PROPERTIES['m']:-false}"; then
+echo
+#        awkFieldManager -
+    else
+        echo "${TYPING[@]}";
+    fi
+
     return 0;
 }

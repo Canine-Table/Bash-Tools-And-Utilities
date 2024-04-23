@@ -3,8 +3,9 @@ BEGIN {
     if (key_or_value != "key" && key_or_value != "value") {
         key_or_value = "key and value";
     }
- 
+
     indexes = arrayIndexer(keyValuePairs(array), index_range);
+
     split(indexes, start_stop_skip, ",");
 
     if (start_stop_skip[3] <= 0) {

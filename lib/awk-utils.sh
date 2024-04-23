@@ -10,8 +10,7 @@ function awkIndexer() {
     local -A INDEXER_PROPERTIES;
 
     # Nested function to check if the data type is valid
-    function dataChecker() {
-
+    function dataTypeChecker() {
         # Check the type of the variable passed as an argument
         case "$(declare -p "${OPTARG}" | awk '{sub(/declare -/, ""); print $1}')" in
             *A*) INDEXER_PROPERTIES["${OPT}"]='A';;  # If associative array
@@ -27,10 +26,10 @@ function awkIndexer() {
    # Parse options passed to the function
     while getopts :g:d:i:q OPT; do
         case ${OPT} in
-            g) INDEXER_PROPERTIES["${OPT}"]="$(awkCompletion -s "${OPTARG}" 'key' 'value')";;  # Get key or value for indexing (defaults to both)
-            d) [[ -n "${OPTARG}" ]] && dataChecker;; # Check data type
+            d) [[ -n "${OPTARG}" ]] && dataTypeChecker;; # Check data type
+            i) [[ ${OPTARG} =~ ^[[:digit:]]*:[[:digit:]]*:[[:digit:]]*$ ]] && INDEXER_PROPERTIES["${OPT}"]="${OPTARG}" ;; # Set index range if it matches the pattern
             q) INDEXER_PROPERTIES["${OPT}"]='true';;
-            i) [[ ${OPTARG} =~ ^[[:digit:]]*:[[:digit:]]*:[[:digit:]]*$ ]] && INDEXER_PROPERTIES["${OPT}"]="${OPTARG}";; # Set index range if it matches the pattern
+            g) INDEXER_PROPERTIES["${OPT}"]="$(awkCompletion -s "${OPTARG}" 'key' 'value')" ;; # Get key or value for indexing (defaults to both)
         esac
     done
 
@@ -43,8 +42,8 @@ function awkIndexer() {
     }
 
     # Check if data was actually passed to the function
-    if ! awk -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk" -v array="${DATA}"; then
-        awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index."  >&2;
+    if ! awk -v array="${DATA}" -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk"; then
+        "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index." >&2;
         return 2;
     fi
 

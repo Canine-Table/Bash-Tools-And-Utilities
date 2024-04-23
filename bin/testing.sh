@@ -5,23 +5,30 @@ function indexers() {
     source "${BIN_DIR}/../lib/configuration-utils.sh";
     libraries;
 
-    local -A A=(
-        ['x']="this"
-        ['y']='hello'
-        ['z']="world"
-    );
+#    local -A "A=($(database -r -f '.systemInformation.di'))"
 
 
     local -a B=(
         "this"
     );
 
-database -r -f '.systemInformation'
+#awkFieldManager -d '=' -p 'h=yu'
+#echo ${#FIELDS[@]}
+#typing BS
+#echo "${A['packageManager']}"
+#database -r -f '.systemInformation.di'
 
 #     isUniqueEntry -A B 'tis'
 #     isUniqueEntry -Q B 'th'
+declare -A ARRAY=(
+    ['xs']='fr'
+);
+#set -x
+ #   isUniqueEntry -Q -p 's' B   ;
 
-#    isUniqueKey -Qqmp 'za=ss' -A A
+    isUniqueKey -p 'za=ss' ARRAY;
+#set +x
+
 #    echo "${A[@]}"
 #    awkFieldManager -p  'a,hello,this,is,tom'
 

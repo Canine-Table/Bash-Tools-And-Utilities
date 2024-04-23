@@ -22,16 +22,39 @@ function database() {
     local -i OPTIND;
 
    # Parse options passed to the function
-    while getopts :c:f:rq OPT; do
+    while getopts :c:f:A:rmq OPT; do
         case ${OPT} in
         r) DATABASE_PARAMETERS=(${DATABASE_PARAMETERS[@]} "$(isUniqueEntry -qQ DATABASE_PARAMETERS "${OPT}")");;
-        c|f) DATABASE_PROPERTIES["${OPT}"]="${OPTARG}";;
-        q) DATABASE_PROPERTIES["${OPT}"]='true';;
+        c|f|A) DATABASE_PROPERTIES["${OPT}"]="${OPTARG}";;
+        q|m) DATABASE_PROPERTIES["${OPT}"]='true';;
         esac
     done
 
     # Shift positional parameters by the number of options parsed
     shift $((OPTIND - 1));
 
-    jq "${DATABASE_PARAMETERS[@]}" "${DATABASE_PROPERTIES["f"]:-.}" "${DATABASE_FILE}";
+    DATABASE_PROPERTIES['t']="$(jq -r "${DATABASE_PROPERTIES["f"]:-.} | type" "${DATABASE_FILE}")";
+
+    if "${DATABASE_PROPERTIES['c']:-false}"; then
+    echo '1'
+    elif [[ "${DATABASE_PROPERTIES['t']}" != 'null' ]]; then
+
+        case "${DATABASE_PROPERTIES['t']}" in
+            'array') DATABASE_PROPERTIES["f"]+='[]';;
+            'object')
+
+                [[ -n "${DATABASE_PROPERTIES['A']}" ]] && {
+                    local FLAG="$(declare -p "${DATABASE_PROPERTIES['A']}" | awk '{sub(/declare -/, ""); print $1}')";
+                }
+
+                for OPT in $(jq "${DATABASE_PARAMETERS[@]}" "${DATABASE_PROPERTIES["f"]} | keys[]" "${DATABASE_FILE}"); do
+                    echo "['${OPT}']='$(jq -r "${DATABASE_PROPERTIES["f"]}.${OPT}" "${DATABASE_FILE}")'";
+                done
+
+                return 0;;
+        esac
+
+        jq "${DATABASE_PARAMETERS[@]}" "${DATABASE_PROPERTIES["f"]:-.}" "${DATABASE_FILE}";
+    fi
+
 }
