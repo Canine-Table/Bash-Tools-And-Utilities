@@ -132,7 +132,7 @@ function awkDynamicBorders() {
     local -a PAGES PARAMETERS;
 
    function setCommands() {
-        awkFieldManager "${OPTARG}";
+        awkFieldManager -d "${BORDER_PROPERTIES['d']:-,}" "${OPTARG}";
         PAGES+=("${FIELDS[@]}");
         return 0;
     }
@@ -159,11 +159,12 @@ function awkDynamicBorders() {
     }
 
    # Parse options passed to the function
-    while getopts :s:l:c:C:W OPT; do
+    while getopts :s:d:l:c:C:W OPT; do
         case ${OPT} in
             s) borderStyle;; # Set border style
             c) setCommands;; # Set display fields
             l) BORDER_PROPERTIES["${OPT}"]="${OPTARG}";; # Set label
+            d) BORDER_PROPERTIES["${OPT}"]="${OPTARG}";;
             C) [[ ${OPTARG} =~ ^[[:digit:]]+$ && "${OPTARG}" -gt 6 && "${OPTARG}" -lt "$(tput cols)" ]] && BORDER_PROPERTIES["${OPT}"]="${OPTARG}";; # Set column width if within valid range
             W) BORDER_PROPERTIES["${OPT}"]='true';; # Enable word wrapping
         esac
