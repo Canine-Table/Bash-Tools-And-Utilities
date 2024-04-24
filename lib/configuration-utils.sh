@@ -65,5 +65,4 @@ function database() {
 
         jq "${DATABASE_PARAMETERS[@]}" "${DATABASE_PROPERTIES["f"]}" "${DATABASE_FILE}";
     fi
-
 }

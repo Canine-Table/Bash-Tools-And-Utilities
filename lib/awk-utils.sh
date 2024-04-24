@@ -12,11 +12,7 @@ function awkIndexer() {
     # Nested function to check if the data type is valid
     function dataTypeChecker() {
         # Check the type of the variable passed as an argument
-        case "$(declare -p "${OPTARG}" | awk '{sub(/declare -/, ""); print $1}')" in
-            *A*) INDEXER_PROPERTIES["${OPT}"]='A';;  # If associative array
-            *a*) INDEXER_PROPERTIES["${OPT}"]='a';;  # If array
-            *) INDEXER_PROPERTIES["E"]='true';;
-        esac
+        INDEXER_PROPERTIES["${OPT}"]="$(declarationQuery -p -n 'r' "${OPTARG}" | grep -o '\(A\|a\)')" || INDEXER_PROPERTIES["E"]='true';
 
         # Extract the data from the variable passed as an argument
         DATA="$(declare -p "${OPTARG}" | awk -v variable="declare -.* ${OPTARG}=" '{sub(variable, ""); print $0}')";
@@ -42,10 +38,10 @@ function awkIndexer() {
     }
 
     # Check if data was actually passed to the function
-    if ! awk -v array="${DATA}" -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk"; then
-        "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index." >&2;
-        return 2;
-    fi
+    # if ! awk -v array="${DATA}" -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk"; then
+    #     "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index." >&2;
+    #     return 2;
+    # fi
 
     return 0; # Return success if everything is fine
 }

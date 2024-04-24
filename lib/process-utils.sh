@@ -243,9 +243,9 @@ function declarationQuery() {
     local -i OPTIND;
 
     # Parse options passed to the function (-n, -m, -q)
-    while getopts :n:m:q OPT; do
+    while getopts :n:m:qp OPT; do
         case ${OPT} in
-            q) TYPING_PROPERTIES["${OPT}"]="true";; # Quiet mode, suppress error messages
+            p|q) TYPING_PROPERTIES["${OPT}"]="true";; # Quiet mode, suppress error messages
             n|m) TYPING_PROPERTIES["${OPT}"]="${OPTARG}";; # Name or match specific flags
         esac
     done
@@ -311,7 +311,7 @@ function declarationQuery() {
         [[ -n "${TYPING_PROPERTIES['m']}" ]] && {
             if ! echo -n "${TYPING[@]}" | grep -qP "$(declarationFlags "${TYPING_PROPERTIES['m']}")"; then
                 # If quiet mode is not set, print error message and set error code 16
-                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -d ':' -l "Flags Not Found" -c "${1} does not contain all the flags in '${TYPING_PROPERTIES[n]}'." >&2;
+                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -d ':' -l "Flags Not Found" -c "${1} does not contain all the flags in '${TYPING_PROPERTIES[m]}'." >&2;
                 TYPING_PROPERTIES['M']=16;
             fi
         }
@@ -324,11 +324,9 @@ function declarationQuery() {
                 TYPING_PROPERTIES['N']=32;
             fi
         }
-    else
-        # If no 'n' or 'm' options, print the typing array
-        echo -n "${TYPING[@]}";
     fi
 
     # Return the sum of error codes
+    "${TYPING_PROPERTIES['p']:-false}" && echo -n "${TYPING[@]}";
     return $((0 + "${TYPING_PROPERTIES['N']:-0}" + "${TYPING_PROPERTIES['M']:-0}"));
 }
