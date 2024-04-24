@@ -6,12 +6,16 @@ function testing() {
     libraries;
 
 #    database -f 'systemInformation.j'
-declare -A ARGS
+declare -Ar ARGS=(
+    [s]=''
+)
 
+declarationQuery -m 'A,l,r' ARGS
 
-isUniqueKey -Q -p 'ijs=g' ARGS
+#echo $?
+#isUniqueKey -Q -p 'ijs=g' ARGS
 #awkIndexer -g 'key' ARGS
-echo "${ARGS[@]}"
+#echo "${ARGS[@]}"
 }
 
 testing;

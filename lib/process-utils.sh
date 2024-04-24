@@ -214,7 +214,7 @@ function isUniqueKey() {
     ("${UNIQUE_KEY_PROPERTIES['m']:-false}" || "${UNIQUE_KEY_PROPERTIES['q']:-false}") && {
         OPTARG='-q';
     } || {
-        unset OPTARG;
+        OPTARG="";
     }
 
     # Add/update the key-value pair if it's unique or if modify mode is enabled.
@@ -294,33 +294,34 @@ function declarationQuery() {
         # Function to manage declaration flags
         function declarationFlags() {
             awkFieldManager "${1}";
-            OPTARG="";
 
             # Build a regex pattern for the flags
             for OPT in "${FIELDS[@]}"; do
                 [[ ${OPT} =~ ^(f|a|A|r|n|i|u|l|x)$ ]] && OPTARG+="(?=.*\b${OPT}\b)";
             done
 
-            unset FIELDS;
             echo -n "${OPTARG}";
+            OPTARG="";
+            OPT="";
+            unset FIELDS;
 
             return 0;
         }
 
         # Check if all 'm' flags are present
         [[ -n "${TYPING_PROPERTIES['m']}" ]] && {
-            if ! echo -n "${TYPING[@]}" | grep -qP "$(declarationFlags "${TYPING_PROPERTIES['m']}")"; then
+            if ! echo -n "${TYPING[@]}" | grep -qP $(declarationFlags "${TYPING_PROPERTIES['m']}"); then
                 # If quiet mode is not set, print error message and set error code 16
-                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -d ':' -l "Flags Not Found" -c "${1} does not contain all the flags in '${TYPING_PROPERTIES[m]}'." >&2;
+                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -d ':' -l "Flags Not Found" -c "The ${1} variable does not contain all the flags in '${TYPING_PROPERTIES[m]}'." >&2;
                 TYPING_PROPERTIES['M']=16;
             fi
         }
 
         # Check if any 'n' flags are present
         [[ -n "${TYPING_PROPERTIES['n']}" ]] && {
-            if echo -n "${TYPING[@]}" | grep -qP "^$(declarationFlags "${TYPING_PROPERTIES['n']}")"; then
+            if echo -n "${TYPING[@]}" | grep -qP $(declarationFlags "${TYPING_PROPERTIES['n']}"); then
                 # If quiet mode is not set, print error message and set error code 32
-                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders  -d ':' -l "Flags Found" -c "${1} contains 1 or more of the following flags '${TYPING_PROPERTIES[n]}' flags." >&2;
+                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders  -d ':' -l "Flags Found" -c "The ${1} variable contains 1 or more of the following flags '${TYPING_PROPERTIES[n]}' flags." >&2;
                 TYPING_PROPERTIES['N']=32;
             fi
         }
