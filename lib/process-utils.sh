@@ -312,7 +312,7 @@ function declarationQuery() {
         [[ -n "${TYPING_PROPERTIES['m']}" ]] && {
             if ! echo -n "${TYPING[@]}" | grep -qP $(declarationFlags "${TYPING_PROPERTIES['m']}"); then
                 # If quiet mode is not set, print error message and set error code 16
-                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -d ':' -l "Flags Not Found" -c "The ${1} variable does not contain all the flags in '${TYPING_PROPERTIES[m]}'." >&2;
+                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders -d '█' -l "Flags Not Found" -c "The ${1} variable does not contain all the flags in '${TYPING_PROPERTIES[m]}'." >&2;
                 TYPING_PROPERTIES['M']=16;
             fi
         }
@@ -321,7 +321,7 @@ function declarationQuery() {
         [[ -n "${TYPING_PROPERTIES['n']}" ]] && {
             if echo -n "${TYPING[@]}" | grep -qP $(declarationFlags "${TYPING_PROPERTIES['n']}"); then
                 # If quiet mode is not set, print error message and set error code 32
-                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders  -d ':' -l "Flags Found" -c "The ${1} variable contains 1 or more of the following flags '${TYPING_PROPERTIES[n]}' flags." >&2;
+                "${TYPING_PROPERTIES["q"]:-false}" || awkDynamicBorders  -d '█' -l "Flags Found" -c "The ${1} variable contains 1 or more of the following flags '${TYPING_PROPERTIES[n]}' flags." >&2;
                 TYPING_PROPERTIES['N']=32;
             fi
         }

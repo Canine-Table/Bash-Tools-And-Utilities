@@ -38,10 +38,10 @@ function awkIndexer() {
     }
 
     # Check if data was actually passed to the function
-    # if ! awk -v array="${DATA}" -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk"; then
-    #     "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index." >&2;
-    #     return 2;
-    # fi
+    if ! awk -v array="${DATA}" -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk"; then
+        "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index." >&2;
+        return 2;
+    fi
 
     return 0; # Return success if everything is fine
 }
@@ -68,7 +68,7 @@ function awkCompletion() {
     shift $((OPTIND - 1));
 
     # Check if the 's' option is set, otherwise use the first positional parameter as the string to match
-    [[ -z "${COMPLETION_PROPERTIES["s"]}" ]] && if [[ -n "${@}"  ]]; then
+    [[ -z "${COMPLETION_PROPERTIES["s"]}" ]] && if [[ -n "${@}" ]]; then
         COMPLETION_PROPERTIES["s"]="${1}";
         shift;
     else
@@ -99,8 +99,11 @@ function awkCompletion() {
     mapfile -t COMPLETION < "${FIFO}";
     [[ -p "${FIFO}" ]] && rm "${FIFO}";
 
+    LIST="";
+
     for OPT in "${COMPLETION[@]}"; do
         awkFieldManager "${OPT}";
+        LIST+="█${FIELDS[0]}";
 
         if [[ ${COMPLETION_PROPERTIES["s"],,} =~ ${FIELDS[1],,} ]]; then
             printf "${CHOICES["${FIELDS[0]}"]}"
@@ -110,10 +113,10 @@ function awkCompletion() {
     done
 
     # If no match is found, print an error message and return with code 3
-    if ! "${COMPLETION_PROPERTIES["matched"]:-false}"; then
-        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'No Match Found' -c "echo ${COMPLETION_PROPERTIES["E"]:-"${COMPLETION_PROPERTIES["s"]} did not match an option."}" >&2;
+    "${COMPLETION_PROPERTIES["matched"]:-false}" || {
+        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d '█' -l 'No Match Found' -c "\"${COMPLETION_PROPERTIES["E"]:-"${COMPLETION_PROPERTIES["s"]}\" did not match any of the following options: ${LIST}"}" >&2;
         return 3;
-    fi
+    }
 
     return 0;
 }
