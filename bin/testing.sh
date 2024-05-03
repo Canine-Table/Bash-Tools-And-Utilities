@@ -38,11 +38,23 @@ function testing() {
 #X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
 
 #eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
-optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
-optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
-optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+# optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+# optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+# optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
 
-echo -e "${FRUITS[@]/#/\\n}"
+
+local -A OPTSS=(
+    ['a']='123'
+    ['butter']=''
+    ['c']='456'
+    ['d']='94'
+    ['buttesr']=''
+);
+
+local -a PARAM;
+
+optionParser OPTSS #PARAM
+#echo ${PARAM[@]}
 
 #echo ${!FRUITS[@]} | grep 'Zu'
 #optionManager -a "Yuzu"="Zucchini is technically a fruit, although it is treated as a vegetable in cooking." -A FRUITS
