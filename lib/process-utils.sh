@@ -331,3 +331,143 @@ function declarationQuery() {
     "${TYPING_PROPERTIES['p']:-false}" && echo -n "${TYPING[@]}";
     return $((0 + "${TYPING_PROPERTIES['N']:-0}" + "${TYPING_PROPERTIES['M']:-0}"));
 }
+
+# Function to manage command line arguments
+function optionManager() {
+
+    # Declare local variables
+    local OPT OPTARG;
+    local -i OPTIND;
+    local -a FIELDS;
+    local -A OPTION_PROPERTIES;
+
+    # Parse command-line options
+    while getopts :G:A:a:k:d:mq OPT; do
+        case ${OPT} in
+            m|q) 
+                # If option is 'm' or 'q', set the corresponding property to 'true'
+                OPTION_PROPERTIES["${OPT}"]='true';;
+            k|d|a|G|A) 
+                # If option is 'k', 'd', 'a', 'G', or 'A', set the corresponding property to the option argument
+                OPTION_PROPERTIES["${OPT}"]="${OPTARG}";;
+        esac
+    done
+
+    # Shift positional parameters
+    shift $((OPTIND - 1));
+
+    # If 'a' property is not set
+    [[ -z "${OPTION_PROPERTIES["a"]}" ]] && {
+        if [[ -n "${1}" ]]; then
+            # If there is a positional parameter, set 'a' property to it and shift positional parameters
+            OPTION_PROPERTIES["a"]="${1}";
+            shift;
+        else
+            # If there is no positional parameter, print an error message and return 1
+            "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Invalid Entry (-k)" -c "Please provide (-k) key to process."
+            return 1;
+        fi
+    }
+
+    # If 'A' property is not set
+    [[ -z "${OPTION_PROPERTIES["A"]}" ]] && {
+        if [[ -n "${1}" ]]; then
+            # If there is a positional parameter, set 'A' property to it and shift positional parameters
+            OPTION_PROPERTIES["A"]="${1}";
+            shift;
+        else
+            # If there is no positional parameter, print an error message and return 2
+            "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Parameters Missing (-A)" -c "Please provide an associative array to use this function." >&2;
+            return 2;
+        fi
+    }
+
+    # Call declarationQuery function with 'A' and 'r' options and the 'A' property
+    # 'A' means the flag must be set, 'r' means the flag must not be set
+    # The function checks if REFERENCE points to a non-readonly Associative Array
+    declarationQuery -m 'A' -n 'r' "${OPTION_PROPERTIES["A"]}" || return $?;
+
+    # Declare a nameref variable REFERENCE to the 'A' property
+    local -n REFERENCE="${OPTION_PROPERTIES["A"]}";
+
+    # If 'k' property is set
+    if [[ -n "${OPTION_PROPERTIES['k']}" ]]; then
+        # Set the first two elements of FIELDS array to 'k' and 'a' properties
+        FIELDS[0]="${OPTION_PROPERTIES['k']}";
+        FIELDS[1]="${OPTION_PROPERTIES["a"]}"
+    else 
+        # Call awkFieldManager function with '=' delimiter and 'a' property
+        awkFieldManager -d '=' "${OPTION_PROPERTIES["a"]}"
+    fi
+  
+    # If the first element of FIELDS array is empty or contains only spaces
+    [[ -z "$(echo -n "${FIELDS[0]}" | sed '/^".*"$/{ s/^"//; s/"$//; }')" || -z "$(echo -n "${FIELDS[0]}" | sed "/^'.*'$/{ s/^'//; s/'$//; }")" || $(echo -n "${FIELDS[0]}" | tr -d \"\') =~ ^[[:space:]]+$ ]] && {
+        # Print an error message and return 3
+        "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Parameter (-a) is Empty" -c "Please provide (-a) as either 'value' or 'key'=value' with or without quotes." >&2;
+        return 3;
+    }
+
+    # If there are more than two elements in FIELDS array and 'k' property is not set
+    if [[ "${#FIELDS[@]}" -gt 2 && -z "${OPTION_PROPERTIES['k']}" ]]; then
+        # Set 'v' property to the 'a' property without the first element and '=' delimiter
+        OPTION_PROPERTIES['v']="$(echo -n "${OPTION_PROPERTIES["a"]}" | sed "s/^${FIELDS[0]}[[:space:]]*=//")";
+    elif [[ -n "${FIELDS[1]}" ]];then 
+        # If the second element of FIELDS array is not empty, set 'v' property to it
+        OPTION_PROPERTIES['v']="${FIELDS[1]}";
+    fi
+
+    # Set 'k' property to the first element of FIELDS array
+    OPTION_PROPERTIES['k']="${FIELDS[0]}";
+    # Clear FIELDS array
+    FIELDS=();
+
+    # Call awk script with 'k', 'v', 'm', and 'G' properties
+    # The awk script checks if the 'k' property already exists in the 'A' property
+    # If 'm' property is not set and 'k' property already exists, the script returns 11
+    # If 'G' property is set and another key in the same radio group is already set, the script returns 12
+    DATA="$(declare -p "${OPTION_PROPERTIES["A"]}" | awk \
+        -v key="${OPTION_PROPERTIES['k']}" \
+        -v value="${OPTION_PROPERTIES['v']:-${OPTION_PROPERTIES['d']:-true}}" \
+        -v modify="${OPTION_PROPERTIES["m"]:-false}" \
+        -v radio="${OPTION_PROPERTIES["G"]}" \
+        -f "${LIB_DIR}/awk-lib/option-manager.awk")" || case $? in
+            10)
+                # If awk script returns 10, print an error message and return 10
+                "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Empty Associative Array" -c "Please provide an associative array (-A) with at least 1 index." >&2;
+                return 10;;
+            11)
+                # If awk script returns 11, print an error message and return 11
+                "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Key Already Exists" -c "Please provide the (-m) flag if you wish to modify existing key values, '${OPTION_PROPERTIES['k']}' already exists within the '${OPTION_PROPERTIES["A"]}' associative array." >&2;
+                return 11;;
+            12)
+                # If awk script returns 12, print an error message and return 12
+                "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Radio Already Set" -c "The '${DATA}' from the radio group selection '${OPTION_PROPERTIES["G"]}' has already been selected. Please provide the (-m) flag if you wish to modify existing or change the radio selection to '${OPTION_PROPERTIES['k']}' since an entry already exists within the '${OPTION_PROPERTIES["A"]}' associative array." >&2;
+                return 12;;
+            13)
+                # If awk script returns 13, print an error message and return 13
+                "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Multiple Radio Entries Selected" -c "The following entries '${DATA}' within the same radio group have been selected from the following options, '${OPTION_PROPERTIES['G']}'. Only 1 option can be selected at a time." >&2;
+                return 13;;
+
+        esac
+
+    # Call awkFieldManager function with '█' delimiter and DATA
+    awkFieldManager -d '█' "${DATA}";
+
+    # If there are more than one elements in FIELDS array
+    if [[ "${#FIELDS[@]}" -gt 1 ]]; then
+        # Set DATA to the last element of FIELDS array and remove it from FIELDS array
+        DATA="${FIELDS[(-1)]}";
+        unset FIELDS[-1];
+
+        # Loop over FIELDS array and unset the corresponding elements in REFERENCE array
+        for OPT in "${FIELDS[@]}"; do
+            unset REFERENCE["${OPT}"];
+        done
+    fi
+
+    # Assign DATA to referenced array
+    eval "REFERENCE$(echo -n "${DATA}")";
+
+    # Return 0
+    return 0;
+}

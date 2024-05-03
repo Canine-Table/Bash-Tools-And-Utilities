@@ -38,7 +38,11 @@ function testing() {
 #X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
 
 #eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
-optionManager -G 'Yuzu,Xigua,Watermelon' -k ' s' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+
+echo -e "${FRUITS[@]/#/\\n}"
 
 #echo ${!FRUITS[@]} | grep 'Zu'
 #optionManager -a "Yuzu"="Zucchini is technically a fruit, although it is treated as a vegetable in cooking." -A FRUITS
