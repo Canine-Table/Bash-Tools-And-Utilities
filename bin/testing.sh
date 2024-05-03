@@ -53,16 +53,21 @@ local -A OPTSS=(
 
 local -a PARAM;
 
-optionParser OPTSS #PARAM
+#optionParser OPTSS #PARAM
 #echo ${PARAM[@]}
 
 #echo ${!FRUITS[@]} | grep 'Zu'
-#optionManager -a "Yuzu"="Zucchini is technically a fruit, although it is treated as a vegetable in cooking." -A FRUITS
+#optionManager -r -a "Zucchini"="Zucchini is technically a fruit, although it is treated as a vegetable in cooking." -A FRUITS
+
+#optionManager -r -k "Zucchini" -A FRUITS
+
+#echo ${FRUITS[Zucchini]}
 #optionManager -a 'Apple'='An apple a day keeps the doctor away.' -A FRUITS
 
-#initSystem NetworkManager
+#initSystem -t "sc" -s NetworkManager
 
-#echo $?
+#X="$(sedIsEmpty "  \"")" && echo 'success'
+#echo $X
 
 #isUniqueKey -Q -p 'ijs=g' ARGS
 #awkIndexer -g 'key' ARGS

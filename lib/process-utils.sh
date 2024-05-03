@@ -342,12 +342,12 @@ function optionManager() {
     local -A OPTION_PROPERTIES;
 
     # Parse command-line options
-    while getopts :G:A:a:k:d:mq OPT; do
+    while getopts :G:A:a:k:d:mqr OPT; do
         case ${OPT} in
-            m|q) 
+            m|q|r)
                 # If option is 'm' or 'q', set the corresponding property to 'true'
                 OPTION_PROPERTIES["${OPT}"]='true';;
-            k|d|a|G|A) 
+            k|d|a|G|A)
                 # If option is 'k', 'd', 'a', 'G', or 'A', set the corresponding property to the option argument
                 OPTION_PROPERTIES["${OPT}"]="${OPTARG}";;
         esac
@@ -362,7 +362,7 @@ function optionManager() {
             # If there is a positional parameter, set 'a' property to it and shift positional parameters
             OPTION_PROPERTIES["a"]="${1}";
             shift;
-        else
+        elif ! sedIsEmpty -q "${OPTION_PROPERTIES["k"]}"; then
             # If there is no positional parameter, print an error message and return 1
             "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Invalid Entry (-k)" -c "Please provide (-k) key to process."
             return 1;
@@ -401,9 +401,9 @@ function optionManager() {
     fi
   
     # If the first element of FIELDS array is empty or contains only spaces
-    [[ -z "$(echo -n "${FIELDS[0]}" | sed '/^".*"$/{ s/^"//; s/"$//; }')" || -z "$(echo -n "${FIELDS[0]}" | sed "/^'.*'$/{ s/^'//; s/'$//; }")" || $(echo -n "${FIELDS[0]}" | tr -d \"\') =~ ^[[:space:]]+$ ]] && {
+    FIELDS[0]="$(sedIsEmpty "${FIELDS[0]}")" || {
         # Print an error message and return 3
-        "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Parameter (-a) is Empty" -c "Please provide (-a) as either 'value' or 'key'=value' with or without quotes." >&2;
+        "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Parameter (-a) is Empty" -c "Please provide (-a) as either 'value' or 'key'='value'." >&2;
         return 3;
     }
 
@@ -411,10 +411,19 @@ function optionManager() {
     if [[ "${#FIELDS[@]}" -gt 2 && -z "${OPTION_PROPERTIES['k']}" ]]; then
         # Set 'v' property to the 'a' property without the first element and '=' delimiter
         OPTION_PROPERTIES['v']="$(echo -n "${OPTION_PROPERTIES["a"]}" | sed "s/^${FIELDS[0]}[[:space:]]*=//")";
-    elif [[ -n "${FIELDS[1]}" ]];then 
+    elif [[ -n "${FIELDS[1]}" ]]; then
         # If the second element of FIELDS array is not empty, set 'v' property to it
         OPTION_PROPERTIES['v']="${FIELDS[1]}";
     fi
+
+    "${OPTION_PROPERTIES["r"]:-false}" && {
+        OPTION_PROPERTIES['v']=$(sedIsEmpty "${OPTION_PROPERTIES['v']}");
+        
+        [[ -z "${OPTION_PROPERTIES['v']}" ]] && {
+            "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Value Pair Required" -c "You have set the (-r) flag requiring all values pairs to contain non-empty values." >&2;
+            return 4;
+        }
+    }
 
     # Set 'k' property to the first element of FIELDS array
     OPTION_PROPERTIES['k']="${FIELDS[0]}";
@@ -470,103 +479,4 @@ function optionManager() {
 
     # Return 0
     return 0;
-}
-
-function optionParser() {
-    # Variables for options and arguments
-    local OPT OPTARG ARGUMENT;  
-    # Index of the next argument to be processed
-    local -i OPTIND;  
-    # Associative array for parser properties
-    local -A PARSER_PROPERTIES;  
-    # Array for parameters
-    local -a PARAMETERS;  
-
-    # Loop over options
-    while getopts :A:a:qp OPT; do  
-        # Switch case for options
-        case ${OPT} in  
-            # Set 'q' or 'p' property to true
-            q|p) PARSER_PROPERTIES["${OPT}"]="true";;  
-            # Set 'a' or 'A' property to the option argument
-            a|A) PARSER_PROPERTIES["${OPT}"]="${OPTARG}";;  
-        esac
-    done
-
-    # Shift positional parameters
-    shift $((OPTIND - 1));  
-
-    # If 'A' property is not set
-    [[ -z "${PARSER_PROPERTIES["A"]}" ]] && {  
-        if [[ -n "${1}" ]]; then  
-            # Set 'A' property to it and shift positional parameters
-            PARSER_PROPERTIES["A"]="${1}";
-            shift;
-        else
-            # If there is no positional parameter, print an error message and return 1
-            "${PARSER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Parameters Missing (-A)" -c "Please provide an associative array to use this function." >&2;
-            return 1;
-        fi
-    }
-
-    # Query the declaration of 'A' property
-    declarationQuery -m 'A' -n 'r' "${PARSER_PROPERTIES["A"]}" || return $?;  
-
-    # Declare a nameref variable to 'A' property
-    local -n REFERENCE="${PARSER_PROPERTIES["A"]}";  
-
-    [[ -z "${PARSER_PROPERTIES["a"]}" && -n "${1}" ]] && {  
-        # Set 'a' property to the positional parameter
-        PARSER_PROPERTIES["a"]="${1}";  
-        # Shift positional parameters
-        shift;  
-    } || {
-        # Set 'a' property to 'PARAMETERS'
-        PARSER_PROPERTIES["a"]='PARAMETERS';  
-        # Set 'p' property to true
-        PARSER_PROPERTIES["p"]="true";  
-    }
-
-    [[ -n "${PARSER_PROPERTIES["a"]}" ]] && {  
-        # Query the declaration of 'a' property
-        declarationQuery -m 'a' -n 'r' "${PARSER_PROPERTIES["a"]}" || {  
-            # Set 'a' property to 'PARAMETERS'
-            PARSER_PROPERTIES["a"]='PARAMETERS';  
-            # Set 'p' property to true
-            PARSER_PROPERTIES["p"]="true";  
-        }
-    }
-
-    # Declare a nameref variable to 'a' property
-    local -n PARAMETER_REFERENCE="${PARSER_PROPERTIES["a"]}";  
-
-    # Loop over the keys of REFERENCE array
-    for OPTARG in "${!REFERENCE[@]}"; do  
-        # Set OPT to the value of the current key in REFERENCE array
-        OPT="${REFERENCE["${OPTARG}"]}";  
-
-        # Check if the current key is a unique entry in 'a' property
-        ARGUMENT="$(isUniqueEntry -Q "${PARSER_PROPERTIES["a"]}" "${OPTARG}")";  
-        # If ARGUMENT is not empty, add it to PARAMETER_REFERENCE array
-        [[ -n "${ARGUMENT}" ]] && PARAMETER_REFERENCE+=("${ARGUMENT}");  
-        # Reset ARGUMENT
-        ARGUMENT="";  
-
-        if [[ -n "${OPT}" && "${REFERENCE["${OPTARG}"]}" != "true" && ! ${OPT} =~ ^[[:space:]]+$ ]]; then  
-            # Add OPT to PARAMETER_REFERENCE array
-            PARAMETER_REFERENCE+=("${OPT}");  
-        fi
-
-        # Reset OPT
-        OPT="";  
-    done
-
-    # If 'p' property is set
-    "${PARSER_PROPERTIES["p"]:-false}" && {  
-        # If 'q' property is not set, print the values of PARAMETER_REFERENCE array
-        "${PARSER_PROPERTIES["q"]:-false}" || echo -n "${PARAMETER_REFERENCE[@]}";  
-    }
-
-    # Return 0
-    return 0;  
 }

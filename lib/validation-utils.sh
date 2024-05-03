@@ -27,22 +27,11 @@ function initSystem() {
         }
     done
 
-   # Parse options passed to the function
-# service
-# mount
-# swap
-# socket
-# target
-# device
-# automount
-# timer
-# path
-# slice
-# scope
-    while getopts :s:q OPT; do
+    while getopts :s:t:q OPT; do
         case ${OPT} in
             q) INIT_PROPERTIES["${OPT}"]='true';; # Supports a quiet mode option '-q' to suppress error messages
             s) INIT_PROPERTIES["${OPT}"]="${OPTARG}";; # The '-s' option allows specifying the service name to act upon
+            t) INIT_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" "service,services" "mount,mounts" "swap,swaps" "socket,sockets" "target,targets" "device,devices" "automount,automounts" "timer,timers" "path,paths" "slice,slices" "scope,scopes")";;
         esac
     done
 
@@ -81,17 +70,5 @@ function _initctlInit() {
 }
 
 function _rcServiceInit() {
-    return 0;
-}
-
-function _systemctlInit() {
-
-    [[ "${FUNCNAME[1]}" != 'initSystem' ]] && {
-        awkDynamicBorders -l "Usage Error" -c "Please use the initSystem function instead of using _systemctlInit directly." >&2;
-        return 1;
-    }
-
-    systemctl status ${INIT_PROPERTIES['s']}
-
     return 0;
 }
