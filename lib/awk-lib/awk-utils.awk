@@ -246,3 +246,18 @@ function keyValuePairs(array) {
     # Return the count of key-value pairs found
     return key_value_indexes;
 }
+
+function quoteRemover(string) {
+
+    newString = string;
+
+    if (newString ~ /^".*"$/) {
+        gsub(/^"|"$/, "", newString);
+    } else if (newString ~ /^'.*'$/) {
+        gsub(/^'|'$/, "", newString);
+    }
+
+    gsub(/^[[:space:]]+$/, "", newString);
+
+    printf newString;
+}

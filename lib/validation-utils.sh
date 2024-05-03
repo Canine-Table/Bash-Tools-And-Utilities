@@ -28,7 +28,17 @@ function initSystem() {
     done
 
    # Parse options passed to the function
-
+# service
+# mount
+# swap
+# socket
+# target
+# device
+# automount
+# timer
+# path
+# slice
+# scope
     while getopts :s:q OPT; do
         case ${OPT} in
             q) INIT_PROPERTIES["${OPT}"]='true';; # Supports a quiet mode option '-q' to suppress error messages
@@ -39,6 +49,11 @@ function initSystem() {
     # Shift positional parameters by the number of options parsed
     shift $((OPTIND - 1));
 
+    [[ -z "${INIT_PROPERTIES["s"]}" && -n "${1}" ]] && {
+        INIT_PROPERTIES["s"]="${1}";
+        shift;
+    }
+
     # Check if an init system was detected
     [[ -z "${INIT_PROPERTIES['i']}" ]] && {
         # If not, print an error message (unless in quiet mode) and return with an error code 1
@@ -47,28 +62,36 @@ function initSystem() {
     }
 
     [[ -z "${INIT_PROPERTIES['s']}" ]] && {
-        ${INIT_PROPERTIES["q"]:-false} || awkDynamicBorders -l "Missing Service" -c "${INIT_PROPERTIES['i']} needs a service to act upon." >&2;
+        ${INIT_PROPERTIES["q"]:-false} || awkDynamicBorders -l "Missing Service" -c "echo ${INIT_PROPERTIES['i']} needs a service to act upon." >&2;
         return 2;
     }
 
     # Based on the detected init system, call the corresponding initialization function
     case "${INIT_PROPERTIES['i']}" in
-        'initctl') initctlInit;;
-        'rc-service') rcServiceInit;;
-        'systemctl') systemctlInit;;
+        'initctl') _initctlInit;;
+        'rc-service') _rcServiceInit;;
+        'systemctl') _systemctlInit;;
     esac
 
     return 0;
 }
 
-function initctlInit() {
+function _initctlInit() {
     return 0;
 }
 
-function rcServiceInit() {
+function _rcServiceInit() {
     return 0;
 }
 
-function systemctlInit() {
+function _systemctlInit() {
+
+    [[ "${FUNCNAME[1]}" != 'initSystem' ]] && {
+        awkDynamicBorders -l "Usage Error" -c "Please use the initSystem function instead of using _systemctlInit directly." >&2;
+        return 1;
+    }
+
+    systemctl status ${INIT_PROPERTIES['s']}
+
     return 0;
 }

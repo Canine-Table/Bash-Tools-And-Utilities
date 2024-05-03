@@ -6,7 +6,6 @@ function testing() {
     libraries;
 
     declare -A FRUITS=(
-
         [Apple]='An apple a day keeps the doctor away.'
         [Banana]='Bananas are berries, but strawberries are not.'
         [Cherry]='Cherries are a member of the rose family.'
@@ -38,10 +37,17 @@ function testing() {
 
 #X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
 
-optionManager -a '"Zucchini"="Zucchini is technically a fruit, although it is treated as a vegetable in cooking."' -A FRUITS
+#eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
+optionManager -G 'Yuzu,Xigua,Watermelon' -k ' s' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
 
+#echo ${!FRUITS[@]} | grep 'Zu'
+#optionManager -a "Yuzu"="Zucchini is technically a fruit, although it is treated as a vegetable in cooking." -A FRUITS
+#optionManager -a 'Apple'='An apple a day keeps the doctor away.' -A FRUITS
+
+#initSystem NetworkManager
 
 #echo $?
+
 #isUniqueKey -Q -p 'ijs=g' ARGS
 #awkIndexer -g 'key' ARGS
 #echo "${ARGS[@]}"
