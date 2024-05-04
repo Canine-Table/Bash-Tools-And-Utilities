@@ -364,7 +364,7 @@ function optionManager() {
             shift;
         elif ! sedIsEmpty -q "${OPTION_PROPERTIES["k"]}"; then
             # If there is no positional parameter, print an error message and return 1
-            "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Invalid Entry (-k)" -c "Please provide (-k) key to process."
+            "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Invalid Entry (-k)" -c "Please provide (-k) key to process." >&2;
             return 1;
         fi
     }
