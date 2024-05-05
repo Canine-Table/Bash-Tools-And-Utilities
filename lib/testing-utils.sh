@@ -20,45 +20,8 @@ function _systemctlInit() {
     return 0;
 }
 
+awkArrayQuerier() {
 
-function awkGetOptions() {
-
-    # Declare local variables
-    local OPT OPTARG;
-    local -i OPTIND;
-    local -A GET_OPTIONS_PROPERTIES;
-
-#    Parse command-line options
-    while getopts :O:q OPT; do
-        case ${OPT} in
-            q)
-                GET_OPTIONS_PROPERTIES["${OPT}"]='true';;
-            O)
-                GET_OPTIONS_PROPERTIES["${OPT}"]="${OPTARG}";;
-        esac
-    done
-
-    # Shift positional parameters
-    shift $((OPTIND - 1));
-
-# echo ${GET_OPTIONS_PROPERTIES['O']}
-
-    [[ -z "${GET_OPTIONS_PROPERTIES["O"]}" ]] && {
-        if [[ -n "${1}" ]]; then
-            GET_OPTIONS_PROPERTIES["O"]="${1}";
-            shift;
-        else
-            "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Missing Options" -c "Please provide (-O) options to process." >&2;
-            return 1;
-        fi
-    }
-
-    [[ -z "${@}" ]] && {
-        "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Missing Arguments" -c "Please provide arguments to process." >&2;
-        return 2;
-    }
-
-    echo -en "${@/#/'EOL\n'}" | tail -n "${#@}" | awk -v options="${GET_OPTIONS_PROPERTIES["O"]}" -f "${LIB_DIR}/awk-lib/get-options.awk";
 
     return 0;
 }

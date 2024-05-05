@@ -42,7 +42,8 @@ function testing() {
 # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
 # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
 
-awkGetOptions -O "print,p|empty,e:m[default=(Mandatory=true)false dk]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
+#awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
+awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "none" -F "short" -- '--Al ' '-b value1' '-c value2'
 
 }
 

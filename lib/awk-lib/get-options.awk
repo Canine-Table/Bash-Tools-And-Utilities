@@ -22,6 +22,13 @@ BEGIN {
 
         flag_style = "set";
     }
+
+    if (length(flag_style_must_match) > 0 && flag_style == "set" && length(prefix) > 0) {
+        flag_style_must_match = "true";
+    } else {
+        flag_style_must_match = "";
+    }
+
 } {
     # Remove trailing " EOL" from each line and store the line in the arguments array
     sub(/ EOL$/, "");
@@ -51,6 +58,13 @@ BEGIN {
 
                         passed_parameters = passed_parameters "" prefix "" kwargs[1] " " "" quote_values "" default_value "" quote_values " ";
                     } else {
+                        printf quote_values "" kwargs[1];
+
+                        if (kwargs[2] !~ kwargs[1]) {
+                            printf " / " kwargs[2];
+                        }
+
+                        printf quote_values;
                         exit 15;
                     }
                 }
@@ -84,6 +98,54 @@ BEGIN {
             # If there is no long form, use the short form as the long form
             if (length(kwargs) == 1) {
                 kwargs[2] = kwargs[1];
+            } else if (length(kwargs) == 0) {
+                # the options field contains :|, ::, or || meaning no flags where passed, skip 
+                if (length(inform_of_empty_flag) > 0) {
+
+                    if (requires_value == 0) {
+                        inform_of_empty_flag = "boolean flag (|)";
+                    } else {
+                        inform_of_empty_flag = "value flag was not detected before the specifier (:)";
+                    }
+
+                    printf quote_values "" inform_of_empty_flag "" quote_values;
+                    exit 17;
+                }
+
+                continue;
+            }
+
+            if (flag_style_must_match == "true" && length(prefix) > 0 && flag_style == "set") {
+                flags_passed = "";
+
+                if (prefix == "--") {
+                    if (length(kwargs[1]) > 1) {
+                        flags_passed = kwargs[1];
+                    } else if (length(kwargs[2]) > 1) {
+                        flags_passed = kwargs[2];
+                    }
+                } else if (prefix == "-") {
+                    if (length(kwargs[1]) == 1) {
+                        flags_passed = kwargs[1];
+                    } else if (length(kwargs[2]) == 1) {
+                        flags_passed = kwargs[2];
+                    }
+                }
+
+                if (length(flags_passed) == 0) {
+                    if (flag_style_action == "exit") {
+
+                        flags_passed = quote_values "" kwargs[1];
+
+                        if (kwargs[2] !~ kwargs[1]) {
+                            flags_passed = "both " flags_passed "" quote_values " and " quote_values "" kwargs[2];
+                        }
+
+                        flag_style_mismatch = flag_style_mismatch "█" flags_passed "" quote_values;
+                    }
+
+                    continue;
+                }
             }
 
             # Loop over each argument
@@ -141,7 +203,7 @@ BEGIN {
                         }
 
                         # If the parameter is not unique, and the uniqueness is required, remove it from the parameters array
-                        if (length(unique_no_required) == 0) {
+                        if (length(unique_not_required) == 0) {
                             delete parameters[parameter_index];
                             argument_index++;
                             continue;
@@ -157,6 +219,11 @@ BEGIN {
 
     delete parameters;
     delete arguments;
+
+    if (length(flag_style_mismatch) > 0) {
+        printf flag_style_mismatch "█";
+        exit 16;
+    }
 
     # Print the passed parameters
     print passed_parameters;

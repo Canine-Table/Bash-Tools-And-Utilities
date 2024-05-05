@@ -46,6 +46,73 @@ function awkIndexer() {
     return 0; # Return success if everything is fine
 }
 
+function awkGetOptions() {
+
+    # Declare local variables
+    local OPT OPTARG;
+    local -i OPTIND;
+    local -A GET_OPTIONS_PROPERTIES;
+
+    # Parse command-line options
+    while getopts :O:Q:A:F:qNUMI OPT; do
+        case ${OPT} in
+            q|N|U|M|I) GET_OPTIONS_PROPERTIES["${OPT}"]='true';;
+            O) GET_OPTIONS_PROPERTIES["${OPT}"]="${OPTARG}";;
+            Q) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'single' 'double' 'tick' 'none')";;
+            F) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'long' 'short' 'none')";;
+            A) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'skip' 'exit')";;
+        esac
+    done
+
+    # Shift positional parameters
+    shift $((OPTIND - 1));
+
+    # Check if -O option is provided
+    [[ -z "${GET_OPTIONS_PROPERTIES["O"]}" ]] && {
+        if [[ -n "${1}" ]]; then
+            GET_OPTIONS_PROPERTIES["O"]="${1}";
+            shift;
+        else
+            "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Missing Options" -c "Please provide (-O) options to process." >&2;
+            return 1;
+        fi
+    }
+
+    # Check if arguments are provided
+    [[ -z "${@}" ]] && {
+        "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Missing Arguments" -c "Please provide arguments to process." >&2;
+        return 2;
+    }
+    
+    # Prepare arguments and invoke AWK script
+    OPTARG="$(echo -en "${@/#/'EOL\n'}" | tail -n "${#@}" | awk \
+        -v options="${GET_OPTIONS_PROPERTIES["O"]}" \
+        -v flag_style="${GET_OPTIONS_PROPERTIES['F']}" \
+        -v quote_values="${GET_OPTIONS_PROPERTIES['Q']}" \
+        -v nullable="${GET_OPTIONS_PROPERTIES['N']}" \
+        -v flag_style_action="${GET_OPTIONS_PROPERTIES['A']}" \
+        -v flag_style_must_match="${GET_OPTIONS_PROPERTIES['M']}" \
+        -v inform_of_empty_flag="${GET_OPTIONS_PROPERTIES['I']}" \
+        -v unique_not_required="${GET_OPTIONS_PROPERTIES['U']}" \
+        -f "${LIB_DIR}/awk-lib/get-options.awk")" || case $? in
+
+        # Handle error codes from AWK script
+        15)
+            "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Default Value Required" -c "The following parameter ${OPTARG} requires a default value specified by the (Mandatory=true) argument you passed for this parameter." >&2;
+            return 15;;
+        16)
+            "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Flag Style Mismatch" -c "The following flags did not meet the prerequisites of a '${GET_OPTIONS_PROPERTIES['F']}' option: ${OPTARG}" >&2;
+            return 16;;
+        17)
+            "${GET_OPTIONS_PROPERTIES["q"]:-false}" || awkDynamicBorders  -l "Empty Flag Detected" -c "An empty ${OPTARG} was not detected from (-O) before the specifier option." >&2;
+            return 17;;
+    esac
+
+    # Print the output from AWK script
+    echo -n "${OPTARG}";
+    return 0;
+}
+
 # The awkCompletion function generates autocompletion suggestions based on a provided string and a list of options, utilizing an external awk script for processing.
 function awkCompletion() {
 
