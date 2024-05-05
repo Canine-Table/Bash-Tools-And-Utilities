@@ -20,11 +20,76 @@ function _systemctlInit() {
     return 0;
 }
 
-awkArrayQuerier() {
+function awkParameterCompletion() {
 
+    # Declare local variables for options and field properties
+    local OPT OPTARG;
+    local -i OPTIND;
+    local -A COMPLETION_PROPERTIES;
 
+   # Parse options passed to the function
+    while getopts :d:P:s:q OPT; do
+        case ${OPT} in
+            q) COMPLETION_PROPERTIES["${OPT}"]='true';;
+            d|P|s) COMPLETION_PROPERTIES["${OPT}"]="${OPTARG}";;
+        esac
+    done
+
+    # Shift off the options from the positional parameters.
+    shift $((OPTIND - 1));
+
+    [[ -z "${COMPLETION_PROPERTIES["P"]}" ]] && if [[ -n "${@}" ]]; then
+        COMPLETION_PROPERTIES["P"]="${*}";
+    else
+        # If neither is provided, print an error message and return with code 1
+        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l 'Missing Parameters' -c "You must provide perameters" >&2;
+        return 1;
+    fi
+
+    OPTARG="$(awk \
+        -v parameters="${COMPLETION_PROPERTIES['P']}" \
+        -v string="${COMPLETION_PROPERTIES['s']}" \
+        -v delimiter="${COMPLETION_PROPERTIES['d']:- }" \
+        -f "${LIB_DIR}/awk-lib/parameter-completion.awk")" || case $? in
+
+        2) 
+            "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "No Matching Parameter Found" -c "${OPTARG}" >&2;
+            return 2;;
+        3)
+            "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "To Many Matches Found" -c "${OPTARG}" >&2;
+            return 3;;
+    esac
+
+    echo -n "${OPTARG}";
     return 0;
 }
+
+
+
+
+# function awkOptionParser() {
+
+# }
+
+# function dialogFactory() {
+
+#     # Declare local variables
+#     local OPT OPTARG;
+#     local -i OPTIND;
+#     local -A DIALOG_PROPERTIES=(
+#         ["variants"]='calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'
+#     );
+
+#     # Parse command-line options
+#     while getopts :V: OPT; do
+#         case ${OPT} in
+#             V) DIALOG_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" $(awkFieldManager -pu "${DIALOG_PROPERTIES["variants"]}"))";;
+#         esac
+#     done
+
+#     echo "${DIALOG_PROPERTIES["V"]}"
+#     return 0;
+# }
 
 # function optionParser() {
 #     # Variables for options and arguments

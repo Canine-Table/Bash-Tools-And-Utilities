@@ -208,7 +208,7 @@ function isUniqueKey() {
     }
 
     # Retrieve the keys of the associative array.
-    local -a KEYS=($(awkIndexer ${OPTARG} -g 'key' -d "${UNIQUE_KEY_PROPERTIES["A"]}"));
+    local -a KEYS=($(awkIndexQuerier -Q 'keys' -A "${UNIQUE_KEY_PROPERTIES["A"]}"));
 
     # Set quiet mode for isUniqueEntry if -m or -q is provided.
     ("${UNIQUE_KEY_PROPERTIES['m']:-false}" || "${UNIQUE_KEY_PROPERTIES['q']:-false}") && {

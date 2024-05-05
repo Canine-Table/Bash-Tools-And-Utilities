@@ -1,49 +1,52 @@
 # Creates the LIB_DIR global variable if it does not already exist. Use this variable to access the absolute path of the library directory containing generic scripts.
 export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)";
 
-# The awkIndexer function processes arrays and associative arrays using awk by validating data types, parsing options, and fetching indexes based on provided parameters.
-function awkIndexer() {
+awkIndexQuerier() {
 
-    # Declare local variables for options and field properties
-    local OPT OPTARG DATA;
+    # Declare local variables
+    local OPT OPTARG;
     local -i OPTIND;
-    local -A INDEXER_PROPERTIES;
+    local -A INDEX_QUERIER_PROPERTIES;
 
-    # Nested function to check if the data type is valid
-    function dataTypeChecker() {
-        # Check the type of the variable passed as an argument
-        INDEXER_PROPERTIES["${OPT}"]="$(declarationQuery -p -n 'r' "${OPTARG}" | grep -o '\(A\|a\)')" || INDEXER_PROPERTIES["E"]='true';
-
-        # Extract the data from the variable passed as an argument
-        DATA="$(declare -p "${OPTARG}" | awk -v variable="declare -.* ${OPTARG}=" '{sub(variable, ""); print $0}')";
-        return 0;
-    }
-
-   # Parse options passed to the function
-    while getopts :g:d:i:q OPT; do
+    # Parse command-line options
+    while getopts :A:R:Q:F:q OPT; do
         case ${OPT} in
-            d) [[ -n "${OPTARG}" ]] && dataTypeChecker;; # Check data type
-            i) [[ ${OPTARG} =~ ^[[:digit:]]*:[[:digit:]]*:[[:digit:]]*$ ]] && INDEXER_PROPERTIES["${OPT}"]="${OPTARG}" ;; # Set index range if it matches the pattern
-            q) INDEXER_PROPERTIES["${OPT}"]='true';;
-            g) INDEXER_PROPERTIES["${OPT}"]="$(awkCompletion -s "${OPTARG}" 'key' 'value')" ;; # Get key or value for indexing (defaults to both)
+            q)  INDEX_QUERIER_PROPERTIES["${OPT}"]='true';;
+            A|R|F) INDEX_QUERIER_PROPERTIES["${OPT}"]="${OPTARG}";;
+            Q)  INDEX_QUERIER_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'keys' 'values' 'both')";;
         esac
     done
 
-    # Shift positional parameters by the number of options parsed
+    # Shift positional parameters
     shift $((OPTIND - 1));
 
-    "${INDEXER_PROPERTIES["E"]:-false}" && {
-        "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Invalid Variable Type" -c "The variable type must be either an array (-a) or an associative array (-A)." >&2;
-        return 1; # If neither, return an error
+    # If 'A' property is not set
+    [[ -z "${INDEX_QUERIER_PROPERTIES["A"]}" ]] && {
+        if [[ -n "${1}" ]]; then
+            # If there is a positional parameter, set 'A' property to it and shift positional parameters
+            INDEX_QUERIER_PROPERTIES["A"]="${1}";
+            shift;
+        else
+            # If there is no positional parameter, print an error message and return 2
+            "${INDEX_QUERIER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Parameters Missing (-A) or (-a)" -c "Please provide either an associative array (-A) or an indexed array (-a) to use this function." >&2;
+            return 2;
+        fi
+    }
+    
+    {
+        declarationQuery -q -m 'A' "${INDEX_QUERIER_PROPERTIES["A"]}" || declarationQuery -q -m 'a' "${INDEX_QUERIER_PROPERTIES["A"]}"
+    } || {
+        "${INDEX_QUERIER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Unintitialized Variable of a Valid Type" -c "${INDEX_QUERIER_PROPERTIES["A"]} must be either an associative array (-A) or an indexed array (-a) for this function to work." >&2;
+        return 16;
     }
 
-    # Check if data was actually passed to the function
-    if ! awk -v array="${DATA}" -v key_or_value="${INDEXER_PROPERTIES['g']}" -v index_range="${INDEXER_PROPERTIES["i"]:-0::1}" -f "${LIB_DIR}/awk-lib/awk-utils.awk" -f "${LIB_DIR}/awk-lib/indexer.awk"; then
-        "${INDEXER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "Uninitialized or Missing Array" -c "Please provide an array (-a) or an associative array (-A) with at least 1 index." >&2;
-        return 2;
-    fi
+    declare -p "${INDEX_QUERIER_PROPERTIES["A"]}" | awk \
+        -v query="${INDEX_QUERIER_PROPERTIES["Q"]:-both}" \
+        -v index_range="${INDEX_QUERIER_PROPERTIES["R"]}" \
+        -v find_match="${INDEX_QUERIER_PROPERTIES["F"]}" \
+        -f "${LIB_DIR}/awk-lib/option-manager.awk";
 
-    return 0; # Return success if everything is fine
+    return 0;
 }
 
 function awkGetOptions() {
@@ -113,6 +116,91 @@ function awkGetOptions() {
     return 0;
 }
 
+# Defines a function to manage fields using AWK
+function awkFieldManager() {
+
+    # Call a function to unset the global FIELDS variables
+    unsetVariables FIELDS;
+
+    # Declare local variables for options and field properties
+    local OPT OPTARG;
+    local -i OPTIND;
+    local -A FIELD_PROPERTIES;
+    declare -ag FIELDS;
+
+    # Create a unique FIFO (named pipe) for inter-process communication
+    local FIFO="/tmp/._$(cat /dev/urandom | tr -dc [:alnum:] | head -c 32).fifo";
+
+    # Define a function to determine the type of quotes to use
+    function quotes() {
+        
+        local Q="";
+        local -a MATCHES;
+
+        # Initialize a variable for quote type
+        local -A QUOTES=(
+            ["single"]="\'"
+            ["double"]="\""
+        );
+
+        # Loop through quote types and find matches using an AWK script
+        for Q in "${!QUOTES[@]}"; do
+            MATCHES=($(printf "${Q}" | awk -f "${LIB_DIR}/awk-lib/completion.awk" | tr ',' '\n'));
+
+            # If a match is found, set the quote type in FIELD_PROPERTIES
+            [[ ${OPTARG} =~ ${MATCHES[1]} ]] && {
+                FIELD_PROPERTIES["${OPT}"]="${QUOTES[${MATCHES[0]}]}";
+                return 0;
+            }
+        done
+
+        # Return 1 if no match is found
+        return 1;
+    }
+
+    # Parse options passed to the function
+    while getopts :s:d:q:nkpu OPT; do
+        case ${OPT} in
+            q) quotes;; # Call quotes function for quote type
+            s|d) FIELD_PROPERTIES["${OPT}"]="${OPTARG}";; # Set separator or delimiter
+            n|p|u) FIELD_PROPERTIES["${OPT}"]='true';; # Set flags for numbering, printing, or unsetting
+            k) FIELD_PROPERTIES["${OPT}"]='false';; # Set flag to keep the FIFO
+        esac
+    done
+
+    # Shift positional parameters by the number of options parsed
+    shift $((OPTIND - 1));
+
+    # Create the FIFO
+    mkfifo "${FIFO}";
+
+    # Send input to AWK script and redirect output to FIFO
+    echo -en "${@}" | awk \
+        -v separator="${FIELD_PROPERTIES['s']}" \
+        -v delimiter="${FIELD_PROPERTIES['d']}" \
+        -v quote="${FIELD_PROPERTIES['q']}" \
+        -f "${LIB_DIR}/awk-lib/field-manager.awk" 2> /dev/null 1> "${FIFO}" &
+
+    # Read the processed fields from FIFO into the FIELDS array
+    mapfile -t FIELDS < "${FIFO}";
+    OPTIND=0;
+
+    # Remove the FIFO if the 'k' (keep) option is not set
+    [[ -p "${FIFO}" && ${FIELD_PROPERTIES['k']:-true} ]] && rm "${FIFO}";
+
+    # If 'p' (print) option is set, print the fields
+    "${FIELD_PROPERTIES['p']:-false}" && for OPT in "${FIELDS[@]}"; do
+        printf "$("${FIELD_PROPERTIES["n"]:-false}" && echo "${OPTIND}) ")${OPT}$([[ "${OPTIND}" -lt "$((${#FIELDS[@]} - 1))" && -z "${FIELD_PROPERTIES['s']}" ]] && echo "\n")";
+        OPTIND=$((OPTIND + 1));
+    done
+
+    # If 'p' (print) and 'u' (unset) options are set, unset the FIELDS array
+    "${FIELD_PROPERTIES['p']:-false}" && "${FIELD_PROPERTIES['u']:-false}" && unset FIELDS;
+
+    # Return success
+    return 0;
+}
+
 # The awkCompletion function generates autocompletion suggestions based on a provided string and a list of options, utilizing an external awk script for processing.
 function awkCompletion() {
 
@@ -140,13 +228,13 @@ function awkCompletion() {
         shift;
     else
         # If neither is provided, print an error message and return with code 1
-        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'Missing String' -c "echo ${COMPLETION_PROPERTIES["S"]:-"Please provide a string to match with for the list of options."}" >&2;
+        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l 'Missing String' -c "${COMPLETION_PROPERTIES["S"]:-"Please provide a string to match with for the list of options."}" >&2;
         return 1;
     fi
 
     [[ -z "${@}" ]] && {
         # If no list is provided, print an error message and return with code 2
-        ! "${COMPLETION_PROPERTIES["q"]:-false}" && awkDynamicBorders -l 'Missing List' -c "echo ${COMPLETION_PROPERTIES["L"]:-"Please provide a list of options to choose from."}" >&2;
+        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l 'Missing List' -c "echo ${COMPLETION_PROPERTIES["L"]:-"Please provide a list of options to choose from."}" >&2;
         return 2;
     }
 
@@ -173,7 +261,7 @@ function awkCompletion() {
         LIST+="█${FIELDS[0]}";
 
         if [[ ${COMPLETION_PROPERTIES["s"],,} =~ ${FIELDS[1],,} ]]; then
-            printf "${CHOICES["${FIELDS[0]}"]}"
+            printf "${CHOICES[${FIELDS[0]}]}"
             COMPLETION_PROPERTIES["matched"]="true";
             break;
         fi
@@ -187,6 +275,7 @@ function awkCompletion() {
 
     return 0;
 }
+
 
 # Defines a function to display borders around text dynamically using AWK
 function awkDynamicBorders() {
@@ -279,89 +368,4 @@ function awkDynamicBorders() {
     fi
 
     return 0; # Indicate successful execution
-}
-
-# Defines a function to manage fields using AWK
-function awkFieldManager() {
-
-    # Call a function to unset the global FIELDS variables
-    unsetVariables FIELDS;
-
-    # Declare local variables for options and field properties
-    local OPT OPTARG;
-    local -i OPTIND;
-    local -A FIELD_PROPERTIES;
-    declare -ag FIELDS;
-
-    # Create a unique FIFO (named pipe) for inter-process communication
-    local FIFO="/tmp/._$(cat /dev/urandom | tr -dc [:alnum:] | head -c 32).fifo";
-
-    # Define a function to determine the type of quotes to use
-    function quotes() {
-        
-        local Q="";
-        local -a MATCHES;
-
-        # Initialize a variable for quote type
-        local -A QUOTES=(
-            ["single"]="\'"
-            ["double"]="\""
-        );
-
-        # Loop through quote types and find matches using an AWK script
-        for Q in "${!QUOTES[@]}"; do
-            MATCHES=($(printf "${Q}" | awk -f "${LIB_DIR}/awk-lib/completion.awk" | tr ',' '\n'));
-
-            # If a match is found, set the quote type in FIELD_PROPERTIES
-            [[ ${OPTARG} =~ ${MATCHES[1]} ]] && {
-                FIELD_PROPERTIES["${OPT}"]="${QUOTES["${MATCHES[0]}"]}";
-                return 0;
-            }
-        done
-
-        # Return 1 if no match is found
-        return 1;
-    }
-
-    # Parse options passed to the function
-    while getopts :s:d:q:nkpu OPT; do
-        case ${OPT} in
-            q) quotes;; # Call quotes function for quote type
-            s|d) FIELD_PROPERTIES["${OPT}"]="${OPTARG}";; # Set separator or delimiter
-            n|p|u) FIELD_PROPERTIES["${OPT}"]='true';; # Set flags for numbering, printing, or unsetting
-            k) FIELD_PROPERTIES["${OPT}"]='false';; # Set flag to keep the FIFO
-        esac
-    done
-
-    # Shift positional parameters by the number of options parsed
-    shift $((OPTIND - 1));
-
-    # Create the FIFO
-    mkfifo "${FIFO}";
-
-    # Send input to AWK script and redirect output to FIFO
-    echo -en "${@}" | awk \
-        -v separator="${FIELD_PROPERTIES['s']}" \
-        -v delimiter="${FIELD_PROPERTIES['d']}" \
-        -v quote="${FIELD_PROPERTIES['q']}" \
-        -f "${LIB_DIR}/awk-lib/field-manager.awk" 2> /dev/null 1> "${FIFO}" &
-
-    # Read the processed fields from FIFO into the FIELDS array
-    mapfile -t FIELDS < "${FIFO}";
-    OPTIND=0;
-
-    # Remove the FIFO if the 'k' (keep) option is not set
-    [[ -p "${FIFO}" && ${FIELD_PROPERTIES['k']:-true} ]] && rm "${FIFO}";
-
-    # If 'p' (print) option is set, print the fields
-    "${FIELD_PROPERTIES['p']:-false}" && for OPT in "${FIELDS[@]}"; do
-        printf "$("${FIELD_PROPERTIES["n"]:-false}" && echo "${OPTIND}) ")${OPT}$([[ "${OPTIND}" -lt "$((${#FIELDS[@]} - 1))" && -z "${FIELD_PROPERTIES['s']}" ]] && echo "\n")";
-        OPTIND=$((OPTIND + 1));
-    done
-
-    # If 'p' (print) and 'u' (unset) options are set, unset the FIELDS array
-    "${FIELD_PROPERTIES['p']:-false}" && "${FIELD_PROPERTIES['u']:-false}" && unset FIELDS;
-
-    # Return success
-    return 0;
 }

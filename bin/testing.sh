@@ -34,8 +34,18 @@ function testing() {
     );
 
 #optionManager ARGS
+#declare -a X=($(awkFieldManager -p 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'))
+
+#awkIndexQuerier -F "(ValuesOnly=true)[[:digit:]]" X
+#isUniqueKey -Q -p 'tsh=world' FRUITS
+
 
 #X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
+#dialogFactory -V ye
+
+
+awkParameterCompletion -d ',' -P 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
+#awkFieldManager 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
 
 #eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
 # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
@@ -43,8 +53,8 @@ function testing() {
 # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
 
 #awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
-awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "none" -F "short" -- '--Al ' '-b value1' '-c value2'
-
+#awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
+#dialogFactory
 }
 
 testing;

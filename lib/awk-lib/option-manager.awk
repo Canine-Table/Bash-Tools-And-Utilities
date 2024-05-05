@@ -1,6 +1,16 @@
-{
+BEGIN {
+    if (length(find_match) > 0) {
+        if (find_match ~ /^\(KeysOnly=true\)/) {
+            sub(/^\(KeysOnly=true\)/, "", find_match);
+            find_match_in = "keys";
+        } else if (find_match ~ /^\(ValuesOnly=true\)/) {
+            sub(/^\(ValuesOnly=true\)/, "", find_match);
+            find_match_in = "values";
+        }
+    }
+} {
     # Remove everything before '=('
-    sub(/.*=\(/, ""); 
+    sub(/.*=\(/, "");
 
     # Remove the first and last character of the string
     # Split the string into entries array using the given delimiters
@@ -49,6 +59,11 @@
 
         # Loop from start to stop with a step of skip
         for (; start_stop_skip[1] <= start_stop_skip[2]; start_stop_skip[1] += start_stop_skip[3]) {
+
+            # if find_match is set check for and print out only the keys and or values that match the pattern
+            if (length(find_match) > 0 && (! ((find_match_in != "values" && key_indexes[start_stop_skip[1]] ~ find_match) || (find_match_in != "keys" && value_indexes[key_indexes[start_stop_skip[1]]] ~ find_match)))) {
+                continue;
+            }
 
             # If the query is "both", print both key and value
             if (query == "both") {
