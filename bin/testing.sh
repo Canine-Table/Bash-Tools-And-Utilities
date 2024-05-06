@@ -4,7 +4,7 @@ export | grep -q 'declare -x BIN_DIR=' || export BIN_DIR="$(cd "$(dirname "${BAS
 function testing() {
     source "${BIN_DIR}/../lib/configuration-utils.sh";
     libraries;
-
+    
     declare -A FRUITS=(
         [Apple]='An apple a day keeps the doctor away.'
         [Banana]='Bananas are berries, but strawberries are not.'
@@ -32,29 +32,34 @@ function testing() {
         [Xigua]='Xigua is another name for watermelon in Africa.'
         [Yuzu]='Yuzu is a citrus fruit from East Asia that tastes like a cross between a lemon, a mandarin orange, and a grapefruit.'
     );
-
-#optionManager ARGS
-#declare -a X=($(awkFieldManager -p 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'))
-
-#awkIndexQuerier -F "(ValuesOnly=true)[[:digit:]]" X
-#isUniqueKey -Q -p 'tsh=world' FRUITS
-
-
-#X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
-#dialogFactory -V ye
-
-
-awkParameterCompletion -d ',' -P 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
-#awkFieldManager 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
-
-#eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
-# optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
-# optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
-# optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
-
-#awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
-#awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
-#dialogFactory
+    
+    #optionManager ARGS
+    #declare -a X=($(awkFieldManager -p 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'))
+    
+    #awkIndexQuerier -F "(ValuesOnly=true)[[:digit:]]" X
+    #isUniqueKey -Q -p 'tsh=world' FRUITS
+    
+    
+    #X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
+    #dialogFactory -V ye
+    #    awkParameterCompletion -s 'j' 'bash' 'json'
+    # declare -A X;
+    # awkParameterCompletion -A X -d ',' -P 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
+    # echo ${!X[@]}
+    
+    #awkGetOptions -F long -O 'calendar,c|buildlist,b' -- '--calendar ' '-b ';
+    #awkParameterCompletion -D ':' -d ',' -s 'be' 'hello:hi,bye:bet'
+    
+    #awkFieldManager 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
+    
+    #eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
+    # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+    # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+    # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+    
+    #awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
+    #awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
+    #dialogFactory
 }
 
 testing;

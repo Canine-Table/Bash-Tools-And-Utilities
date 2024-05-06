@@ -7,5 +7,25 @@
     },
     "scriptConfigurations": {
         "loggingDirectory": "/var/log/scripts"
+    },
+    "applications": {
+        "vscode": {
+            "extensions": [
+                "beaglefoot.awk-ide-vscode",
+                "chrmarti.regex",
+                "esbenp.prettier-vscode",
+                "hangxingliu.vscode-awk-hint",
+                "kamikillerto.vscode-colorize",
+                "luggage66.awk",
+                "mechatroner.rainbow-csv",
+                "oderwat.indent-rainbow",
+                "redhat.vscode-xml",
+                "redhat.vscode-yaml",
+                "shakram02.bash-beautify",
+                "streetsidesoftware.code-spell-checker",
+                "tgv.awk-language-client",
+                "zainchen.json"
+            ]
+        }
     }
 }

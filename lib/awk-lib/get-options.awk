@@ -34,6 +34,10 @@ BEGIN {
     sub(/ EOL$/, "");
     arguments[NR] = $0;
 } END {
+    if (options !~ /(:)$/) {
+        options = options "|:";
+    }
+
     # Loop over the options string as long as there are parameters left to process
     while (match(options, /:.*$/)) {
         # Split the current parameter from the options string
@@ -179,6 +183,12 @@ BEGIN {
                         # Check if the argument has a value
                         if (length(value_pair) == 0) {
                             if(requires_value == 0) {
+
+                                if (length(flags_passed) > 0) {
+                                    kwargs[1] = flags_passed;
+                                    flags_passed = "";
+                                }
+
                                 # If the parameter is a boolean flag, add it to the passed parameters
                                 passed_parameters = passed_parameters "" prefix "" kwargs[1] " ";
 
@@ -193,6 +203,11 @@ BEGIN {
                                 # If the parameter is not nullable, skip it
                                 continue;
                             }
+                        }
+
+                        if (length(flags_passed) > 0) {
+                            kwargs[1] = flags_passed;
+                            flags_passed = "";
                         }
 
                         # Add the parameter and its value to the passed parameters
@@ -213,9 +228,9 @@ BEGIN {
             }
         }
 
-       # Remove the processed parameter from the options string
-       options = substr(options, RSTART + 1);
-   }
+        # Remove the processed parameter from the options string
+        options = substr(options, RSTART + 1);
+    }
 
     delete parameters;
     delete arguments;

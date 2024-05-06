@@ -399,7 +399,7 @@ function optionManager() {
         # Call awkFieldManager function with '=' delimiter and 'a' property
         awkFieldManager -d '=' "${OPTION_PROPERTIES["a"]}"
     fi
-  
+
     # If the first element of FIELDS array is empty or contains only spaces
     FIELDS[0]="$(sedIsEmpty "${FIELDS[0]}")" || {
         # Print an error message and return 3
@@ -456,7 +456,6 @@ function optionManager() {
                 # If awk script returns 13, print an error message and return 13
                 "${OPTION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Multiple Radio Entries Selected" -c "The following entries '${DATA}' within the same radio group have been selected from the following options, '${OPTION_PROPERTIES['G']}'. Only 1 option can be selected at a time." >&2;
                 return 13;;
-
         esac
 
     # Call awkFieldManager function with '█' delimiter and DATA

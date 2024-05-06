@@ -13,7 +13,7 @@ awkIndexQuerier() {
         case ${OPT} in
             q)  INDEX_QUERIER_PROPERTIES["${OPT}"]='true';;
             A|R|F) INDEX_QUERIER_PROPERTIES["${OPT}"]="${OPTARG}";;
-            Q)  INDEX_QUERIER_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'keys' 'values' 'both')";;
+            Q)  INDEX_QUERIER_PROPERTIES["${OPT}"]="$(awkParameterCompletion -s "${OPTARG}" 'keys' 'values' 'both')";;
         esac
     done
 
@@ -56,14 +56,20 @@ function awkGetOptions() {
     local -i OPTIND;
     local -A GET_OPTIONS_PROPERTIES;
 
+    # (-N) kwargs can be nullable
+    # (-U) unique kwargs are no longer required
+    # (-O) the formated option string passed to thi function for processing
+    # (-A) specify an action
+    # (-q) quiet mode
+    # (-I) inform of empty field in the option string rather than just skipping that option.
     # Parse command-line options
     while getopts :O:Q:A:F:qNUMI OPT; do
         case ${OPT} in
             q|N|U|M|I) GET_OPTIONS_PROPERTIES["${OPT}"]='true';;
             O) GET_OPTIONS_PROPERTIES["${OPT}"]="${OPTARG}";;
-            Q) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'single' 'double' 'tick' 'none')";;
-            F) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'long' 'short' 'none')";;
-            A) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" 'skip' 'exit')";;
+            Q) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkParameterCompletion -s "${OPTARG}" 'single' 'double' 'tick' 'none')";;
+            F) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkParameterCompletion -s "${OPTARG}" 'long' 'short' 'none')";;
+            A) GET_OPTIONS_PROPERTIES["${OPT}"]="$(awkParameterCompletion -s "${OPTARG}" 'skip' 'exit')";;
         esac
     done
 
@@ -113,6 +119,7 @@ function awkGetOptions() {
 
     # Print the output from AWK script
     echo -n "${OPTARG}";
+
     return 0;
 }
 
@@ -201,81 +208,72 @@ function awkFieldManager() {
     return 0;
 }
 
-# The awkCompletion function generates autocompletion suggestions based on a provided string and a list of options, utilizing an external awk script for processing.
-function awkCompletion() {
-
+# The awkParameterCompletion function generates autocompletion suggestions based on a provided string and a list of options, utilizing an external awk script for processing.
+function awkParameterCompletion() {
     # Declare local variables for options and field properties
-    local OPT OPTARG LIST;
+    local OPT OPTARG;
     local -i OPTIND;
-    local -a COMPLETION;
-    local -A COMPLETION_PROPERTIES CHOICES;
-    local -r FIFO="/tmp/._$(cat /dev/urandom | tr -dc [:alnum:] | head -c 32).fifo";
-
-   # Parse options passed to the function
-    while getopts :s:S:L:q OPT; do
+    local -A COMPLETION_PROPERTIES;
+    
+    # Parse options passed to the function
+    while getopts :D:d:P:A:s:q OPT; do
         case ${OPT} in
-        s|S|E|L) COMPLETION_PROPERTIES["${OPT}"]="${OPTARG}";;
-        q) COMPLETION_PROPERTIES["${OPT}"]='true';;
+            q) 
+                # Set the 'q' option in the COMPLETION_PROPERTIES associative array to 'true'
+                COMPLETION_PROPERTIES["${OPT}"]='true';;
+            D|d|P|s|A) 
+                # Set the respective option in the COMPLETION_PROPERTIES associative array to the argument value
+                COMPLETION_PROPERTIES["${OPT}"]="${OPTARG}";;
         esac
     done
-
-    # Shift positional parameters by the number of options parsed
+    
+    # Shift off the options from the positional parameters.
     shift $((OPTIND - 1));
-
-    # Check if the 's' option is set, otherwise use the first positional parameter as the string to match
-    [[ -z "${COMPLETION_PROPERTIES["s"]}" ]] && if [[ -n "${@}" ]]; then
-        COMPLETION_PROPERTIES["s"]="${1}";
-        shift;
+    
+    # If the 'A' option is set and the 's' option is not set, check if the 'A' option is an associative array or an indexed array
+    [[ -n "${COMPLETION_PROPERTIES["A"]}" && -z "${COMPLETION_PROPERTIES["s"]}" ]] && {
+        declarationQuery -q -m 'A' -n 'r' "${COMPLETION_PROPERTIES["A"]}" && COMPLETION_PROPERTIES["F"]='associative';
+        declarationQuery -q -m 'a' -n 'r' "${COMPLETION_PROPERTIES["A"]}" && COMPLETION_PROPERTIES["F"]='indexed';
+    }
+    
+    # If the 'P' option is not set, check if there are any positional parameters. If there are, set the 'P' option to the positional parameters.
+    # If there are no positional parameters, print an error message and return with code 1
+    [[ -z "${COMPLETION_PROPERTIES["P"]}" ]] && if [[ -n "${@}" ]]; then
+        COMPLETION_PROPERTIES["P"]="${*}";
     else
-        # If neither is provided, print an error message and return with code 1
-        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l 'Missing String' -c "${COMPLETION_PROPERTIES["S"]:-"Please provide a string to match with for the list of options."}" >&2;
+        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l 'Missing Parameters' -c "You must provide parameters" >&2;
         return 1;
     fi
+    
+    # Call the AWK function with the options set in the COMPLETION_PROPERTIES associative array
+    OPTARG="$(awk \
+        -v parameters="${COMPLETION_PROPERTIES['P']}" \
+        -v string="${COMPLETION_PROPERTIES['s']}" \
+        -v delimiter="${COMPLETION_PROPERTIES['d']:- }" \
+        -v parameter_delimiter="${COMPLETION_PROPERTIES['D']:-,}" \
+        -v formating="${COMPLETION_PROPERTIES["F"]}" \
+        -f "${LIB_DIR}/awk-lib/parameter-completion.awk")" || case $? in
 
-    [[ -z "${@}" ]] && {
-        # If no list is provided, print an error message and return with code 2
-        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -l 'Missing List' -c "echo ${COMPLETION_PROPERTIES["L"]:-"Please provide a list of options to choose from."}" >&2;
-        return 2;
-    }
-
-    for OPT in "${@}"; do
-        awkFieldManager "${OPT}";
-
-        # Process each option in the list to build a completion list and a map of choices
-        if [[ "${#FIELDS[@]}" -gt 0 ]]; then
-            LIST+=",${FIELDS[1]:-"${FIELDS[0]}"}";
-            CHOICES["${FIELDS[1]:-"${FIELDS[0]}"}"]="${FIELDS[0]}";
-        fi
-    done
-
-    # Create a named pipe (FIFO) and use awk to filter the completion list
-    mkfifo "${FIFO}";
-    awkFieldManager -pu "${LIST:1}" | awk -f "${LIB_DIR}/awk-lib/completion.awk" > "${FIFO}" 2> /dev/null &
-    mapfile -t COMPLETION < "${FIFO}";
-    [[ -p "${FIFO}" ]] && rm "${FIFO}";
-
-    LIST="";
-
-    for OPT in "${COMPLETION[@]}"; do
-        awkFieldManager "${OPT}";
-        LIST+="█${FIELDS[0]}";
-
-        if [[ ${COMPLETION_PROPERTIES["s"],,} =~ ${FIELDS[1],,} ]]; then
-            printf "${CHOICES[${FIELDS[0]}]}"
-            COMPLETION_PROPERTIES["matched"]="true";
-            break;
-        fi
-    done
-
-    # If no match is found, print an error message and return with code 3
-    "${COMPLETION_PROPERTIES["matched"]:-false}" || {
-        "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d '█' -l 'No Match Found' -c "\"${COMPLETION_PROPERTIES["E"]:-"${COMPLETION_PROPERTIES["s"]}\" did not match any of the following options: ${LIST}"}" >&2;
-        return 3;
-    }
-
+        2)
+            # If the AWK function returns with code 2, print an error message and return with code 2
+            "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "No Matching Parameter Found" -c "${OPTARG}" >&2;
+            return 2;;
+        3)
+            # If the AWK function returns with code 3, print an error message and return with code 3
+            "${COMPLETION_PROPERTIES["q"]:-false}" || awkDynamicBorders -d "█" -l "Too Many Matches Found" -c "${OPTARG}" >&2;
+            return 3;;
+    esac
+    
+    # If the 'F' option is set, assign the output of the AWK function to the 'A' option in the COMPLETION_PROPERTIES associative array
+    # If the 'F' option is not set, print the output of the AWK function
+    if [[ -n "${COMPLETION_PROPERTIES["F"]}" ]]; then
+        eval "${COMPLETION_PROPERTIES["A"]}=($(echo -n "${OPTARG}"))";
+    else
+        echo -n "${OPTARG}";
+    fi
+    
     return 0;
 }
-
 
 # Defines a function to display borders around text dynamically using AWK
 function awkDynamicBorders() {
