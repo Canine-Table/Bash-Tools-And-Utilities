@@ -14,7 +14,12 @@ function sedIsEmpty() {
     return $?;
 }
 
-sedBooleanToggle() {
+function sedBooleanToggle() {
     echo "${@}" | sed -E -f "${LIB_DIR}/sed-lib/boolean-toggle.sed";
+    return 0;
+}
+
+function sedCharacterCasing() {
+    echo "${@}" | sed -E -f "${LIB_DIR}/sed-lib/character-casing.sed";
     return 0;
 }
