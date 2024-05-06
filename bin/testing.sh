@@ -40,6 +40,9 @@ function testing() {
     #isUniqueKey -Q -p 'tsh=world' FRUITS
     
     
+    #    dialogFactory -V yes
+    #    sedBooleanToggle "$1"
+    
     #X=$(awkCompletion 'tsh' 'both' 'keys' 'values') || echo 'errors';
     #dialogFactory -V ye
     #    awkParameterCompletion -s 'j' 'bash' 'json'
@@ -59,7 +62,6 @@ function testing() {
     
     #awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
     #awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
-    #dialogFactory
+    dialogFactory -V yes -B 'cle'  -B 'extra-b' -B 'scro' -L 'ext=bye' -B 'ext'
 }
-
-testing;
+testing $1;

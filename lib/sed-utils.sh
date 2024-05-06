@@ -2,14 +2,19 @@
 export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)";
 
 function sedIsEmpty() {
-
+    
     local OUTPUT='/dev/fd/1';
-
+    
     [[ "${1}" == '-q' ]] && {
         OUTPUT='/dev/null';
         shift;
     }
-
+    
     echo -n "${@}" | sed -f "${LIB_DIR}/sed-lib/is-empty.sed" > ${OUTPUT};
     return $?;
+}
+
+sedBooleanToggle() {
+    echo "${@}" | sed -E -f "${LIB_DIR}/sed-lib/boolean-toggle.sed";
+    return 0;
 }

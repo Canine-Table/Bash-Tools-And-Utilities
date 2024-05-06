@@ -226,7 +226,7 @@ function awkParameterCompletion() {
                 COMPLETION_PROPERTIES["${OPT}"]="${OPTARG}";;
         esac
     done
-    
+
     # Shift off the options from the positional parameters.
     shift $((OPTIND - 1));
     

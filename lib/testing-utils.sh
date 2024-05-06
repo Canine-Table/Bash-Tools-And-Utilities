@@ -82,25 +82,58 @@ function _systemctlInit() {
 
 # }
 
-# function dialogFactory() {
 
-#     # Declare local variables
-#     local OPT OPTARG;
-#     local -i OPTIND;
-#     local -A DIALOG_PROPERTIES=(
-#         ["variants"]='calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'
-#     );
 
-#     # Parse command-line options
-#     while getopts :V: OPT; do
-#         case ${OPT} in
-#             V) DIALOG_PROPERTIES["${OPT}"]="$(awkCompletion "${OPTARG}" $(awkFieldManager -pu "${DIALOG_PROPERTIES["variants"]}"))";;
-#         esac
-#     done
 
-#     echo "${DIALOG_PROPERTIES["V"]}"
-#     return 0;
-# }
+
+function dialogFactory() {
+
+    # Declare local variables
+    local -i DIALOG_ESC=255 DIALOG_ITEM_HELP=4 DIALOG_EXTRA=3 DIALOG_HELP=2 DIALOG_CANCEL=1 DIALOG_OK=0 OPTIND;
+    local OPT OPTARG;
+    local -a FIELDS;
+
+    local -A DIALOG_PROPERTIES=(
+        ["booleans"]='ascii-lines,beep,beep-after,clear,colors,cr-wrap,cursor-off-label,defaultno,erase-on-exit,ignore,insecure,keep-tite,keep-window,last-key,no-cancel,no-collapse,no-hot-list,no-items,no-kill,no-lines,no-mouse,no-nl-expand,no-ok,no-shadow,no-tags,print-maxsize,print-size,print-version,quoted,reorder,scrollbar,separate-output,single-quoted,size-err,stderr,stdout,tab-correct,trim,version,visit-items'
+        ["variants"]='calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'
+        ["labels"]='no-label,backtitle,cancel-label,column-separator,help-label,default-item,exit-label,extra-label,default-button,title'
+        ["buttons"]='extra-button,help-button'
+        ["lines"]="$(tput lines)"
+        ["columns"]="$(tput cols)"
+    ) DIALOG_TOGGLES DIALOG_LABELS;
+
+    # Parse command-line options
+    while getopts :V:B:L: OPT; do
+        case ${OPT} in
+            V) DIALOG_PARAMETERS["${OPT}"]="$(awkParameterCompletion -d ',' -s "${OPTARG}" "${DIALOG_PROPERTIES["variants"]}")";;
+            B)
+                OPT="$(awkParameterCompletion -d ',' -s "${OPTARG}" "${DIALOG_PROPERTIES["booleans"]},${DIALOG_PROPERTIES["buttons"]}")" && {
+                    DIALOG_TOGGLES["${OPT}"]="$(sedBooleanToggle "${DIALOG_TOGGLES["${OPT}"]}")";
+                    "${DIALOG_TOGGLES["${OPT}"]}" || unset DIALOG_TOGGLES["${OPT}"];
+                };;
+            L)
+                awkFieldManager -d '=' "${OPTARG}";
+                OPT="$(awkParameterCompletion -d ',' -s "${FIELDS[0]}" "${DIALOG_PROPERTIES["labels"]}")" && {
+                    sedIsEmpty -q "${FIELDS[1]}" && {
+                        DIALOG_LABELS["${OPT}"]="${FIELDS[1]}";
+                        awkFieldManager -d '-' "${OPT}";
+                        
+                        OPT="$(awkParameterCompletion -q -d ',' -s "${FIELDS[0]}" "${DIALOG_PROPERTIES["buttons"]}")" && {
+                            DIALOG_TOGGLES["${OPT}"]='true';
+                        }
+
+                        FIELDS=();
+                    }
+                };;
+        esac
+    done
+
+    echo "${DIALOG_TOGGLES[@]}"
+    echo "${!DIALOG_LABELS[@]}"
+
+    #    dialog "--${DIALOG_PARAMETERS["V"]}" "hi" "${DIALOG_PROPERTIES["lines"]}" "${DIALOG_PROPERTIES["columns"]}"
+    return 0;
+}
 
 # function optionParser() {
 #     # Variables for options and arguments
