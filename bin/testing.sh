@@ -65,7 +65,12 @@ function testing() {
     
     #awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
     #awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
-    dialogFactory -V yes -B 'keep-w'  -B 'extra-b' -B 'scro' -L 'tit=(Title)bye' -L 'mes=(Upper)hello world' -L 'ext=(Upper)Hello'
+#    dialogFactory -V yes -B 'keep-w' -B 'extra-b' -B 'scro' -L 'tit=(Title)bye' -L 'me=(Upper)hello world' -L 'ext=(Title)Hello'
+
+    dialogFactory -V 'msg' -L 'tit=IP Information' -B 'no-collapse' -L "mess=$(ls -al)"
+
     #sedCharacterCasing "${@}";
 }
+
+#set -x
 testing "${@}";

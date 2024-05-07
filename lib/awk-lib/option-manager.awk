@@ -72,7 +72,7 @@ BEGIN {
                     prefix = prefix "-";
                 }
 
-                if (output_format == "flags" && value_indexes[key_indexes[start_stop_skip[1]]] ~ ^/false|no/$) {
+                if (output_format == "flags" && value_indexes[key_indexes[start_stop_skip[1]]] ~ /^(false|no)$/) {
                     continue;
                 }
             }
@@ -82,7 +82,7 @@ BEGIN {
                 if (output_format == "parameters") {
                     printf prefix "" key_indexes[start_stop_skip[1]] " \"" value_indexes[key_indexes[start_stop_skip[1]]] "\" ";
                 } else if (output_format == "flags") {
-                    printf prefix "" key_indexes[start_stop_skip[1]] " ";
+                    printf "\"" prefix "" key_indexes[start_stop_skip[1]] "\" \"" value_indexes[key_indexes[start_stop_skip[1]]] "\" ";
                 } else if (output_format == "associative") {
                     printf "[\"" key_indexes[start_stop_skip[1]] "\"]=\"" value_indexes[key_indexes[start_stop_skip[1]]] "\"";
                 } else {

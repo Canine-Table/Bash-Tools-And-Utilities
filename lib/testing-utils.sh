@@ -1,16 +1,15 @@
 # Check if LIB_DIR is already exported, if not, set it to the directory of this script
 export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)";
 
-
-
-
-
-
 function dialogFactory() {
 
+    unsetVariables 'DIALOG_RESPONSE';
+
     # Declare local variables
-    local -i DIALOG_ESC=255 DIALOG_ITEM_HELP=4 DIALOG_EXTRA=3 DIALOG_HELP=2 DIALOG_CANCEL=1 DIALOG_OK=0 OPTIND;
+    local -i DIALOG_ESC=255 DIALOG_ITEM_HELP=4 DIALOG_EXTRA=3 DIALOG_HELP=2 DIALOG_CANCEL=1 DIALOG_OK=0 OPTIND DIALOG_EXIT_STATUS;
+    export DIALOGRC="${LIB_DIR}/../etc/.dialogrc";
     local OPT OPTARG;
+    declare -g DIALOG_RESPONSE;
     local -a FIELDS;
 
     local -A DIALOG_PROPERTIES=(
@@ -59,22 +58,17 @@ function dialogFactory() {
         esac
     done
 
-#    echo 
-awkIndexQuerier -O 'param' DIALOG_LABELS
-exit
-#awkGetOptions -Q 'double' -U -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
+    # Shift off the options from the positional parameters.
+    shift $((OPTIND - 1));
 
+    eval "PARAMETERS=($(echo "$(awkIndexQuerier -O 'flags' DIALOG_LABELS)")$(echo -n " ${!DIALOG_TOGGLES[@]} ${DIALOG_PARAMETERS[V]}" | sed 's/ / --/g'))";
+    DIALOG_RESPONSE="$(dialog "${PARAMETERS[@]}" "\n${DIALOG_PROPERTIES["message"]:-Dialog}\n " "${DIALOG_PROPERTIES["lines"]}" "${DIALOG_PROPERTIES["columns"]}" 3>&1 1>&2 2>&3)";
+    DIALOG_EXIT_STATUS=$?;
 
-        dialog $(echo -n " ${!DIALOG_TOGGLES[@]}" | sed 's/ / --/g') \
-            "${DIALOG_PARAMETERS["V"]/#/--}" \
-            "${DIALOG_PROPERTIES["message"]:-Dialog}" \
-            "${DIALOG_PROPERTIES["lines"]}" \
-            "${DIALOG_PROPERTIES["columns"]}";
+    [[ ${DIALOG_EXIT_STATUS} -eq 0 ]] && clear;
 
-    return 0;
+    return ${DIALOG_EXIT_STATUS};
 }
-
-
 
 function _systemctlInit() {
     
