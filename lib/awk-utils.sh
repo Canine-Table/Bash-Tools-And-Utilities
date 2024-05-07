@@ -9,11 +9,12 @@ awkIndexQuerier() {
     local -A INDEX_QUERIER_PROPERTIES;
 
     # Parse command-line options
-    while getopts :A:R:Q:F:q OPT; do
+    while getopts :A:R:Q:F:O:q OPT; do
         case ${OPT} in
             q)  INDEX_QUERIER_PROPERTIES["${OPT}"]='true';;
             A|R|F) INDEX_QUERIER_PROPERTIES["${OPT}"]="${OPTARG}";;
-            Q)  INDEX_QUERIER_PROPERTIES["${OPT}"]="$(awkParameterCompletion -s "${OPTARG}" 'keys' 'values' 'both')";;
+            Q) INDEX_QUERIER_PROPERTIES["${OPT}"]="$(awkParameterCompletion -d ',' -s "${OPTARG}" 'keys,values,both')";;
+            O) INDEX_QUERIER_PROPERTIES["${OPT}"]="$(awkParameterCompletion -d ',' -s "${OPTARG}" 'parameters,flags,associative')";;
         esac
     done
 
@@ -43,6 +44,7 @@ awkIndexQuerier() {
     declare -p "${INDEX_QUERIER_PROPERTIES["A"]}" | awk \
         -v query="${INDEX_QUERIER_PROPERTIES["Q"]:-both}" \
         -v index_range="${INDEX_QUERIER_PROPERTIES["R"]}" \
+        -v output_format="${INDEX_QUERIER_PROPERTIES["O"]}" \
         -v find_match="${INDEX_QUERIER_PROPERTIES["F"]}" \
         -f "${LIB_DIR}/awk-lib/option-manager.awk";
 

@@ -14,7 +14,7 @@ BEGIN {
 
     # Remove the first and last character of the string
     # Split the string into entries array using the given delimiters
-    entry_count = split(substr($0, 1, length($0) - 2), entries, /\]="|" \[|^\[/);
+    entry_count = split(substr($0, 1, length($0) - 3), entries, /\]="|" \[|^\[/);
 
     # If there are less than 2 entries, delete the entries array and exit with code 10
     if (entry_count < 2) {
@@ -65,15 +65,43 @@ BEGIN {
                 continue;
             }
 
+            if (output_format ~ /^(parameters|flags)$/) {
+                prefix = "-";
+
+                if (length(key_indexes[start_stop_skip[1]]) > 1) {
+                    prefix = prefix "-";
+                }
+
+                if (output_format == "flags" && value_indexes[key_indexes[start_stop_skip[1]]] ~ ^/false|no/$) {
+                    continue;
+                }
+            }
+
             # If the query is "both", print both key and value
             if (query == "both") {
-                printf "[\"" key_indexes[start_stop_skip[1]] "\"]=\"" value_indexes[key_indexes[start_stop_skip[1]]] "\"";
+                if (output_format == "parameters") {
+                    printf prefix "" key_indexes[start_stop_skip[1]] " \"" value_indexes[key_indexes[start_stop_skip[1]]] "\" ";
+                } else if (output_format == "flags") {
+                    printf prefix "" key_indexes[start_stop_skip[1]] " ";
+                } else if (output_format == "associative") {
+                    printf "[\"" key_indexes[start_stop_skip[1]] "\"]=\"" value_indexes[key_indexes[start_stop_skip[1]]] "\"";
+                } else {
+                    printf "\"" key_indexes[start_stop_skip[1]] "\" \"" value_indexes[key_indexes[start_stop_skip[1]]] "\"";
+                }
             } else if (query == "keys") {
                 # If the query is "keys", print only the key
-                printf key_indexes[start_stop_skip[1]];
+                if (output_format == "flags") {
+                    printf prefix "" key_indexes[start_stop_skip[1]] " ";
+                } else {
+                    printf key_indexes[start_stop_skip[1]];
+                }
             } else if (query == "values") {
                 # If the query is "values", print only the value
-                printf value_indexes[key_indexes[start_stop_skip[1]]];
+                    if (output_format == "flags") {
+                        printf prefix "" value_indexes[key_indexes[start_stop_skip[1]]] " ";
+                    } else {
+                        printf value_indexes[key_indexes[start_stop_skip[1]]];
+                    }
             } else {
                 # If the query is neither "both", "keys", nor "values", delete arrays and exit with code 13
                 delete start_stop_skip;
@@ -83,7 +111,7 @@ BEGIN {
             }
 
             # If the next index is within the key count, print a newline
-            if ((start_stop_skip[1] + start_stop_skip[3]) <= key_count) {
+            if ((start_stop_skip[1] + start_stop_skip[3]) <= key_count && output_format !~ /^(parameters|flags)$/) {
                 printf "\n";
             }
         }

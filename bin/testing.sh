@@ -32,11 +32,14 @@ function testing() {
         [Xigua]='Xigua is another name for watermelon in Africa.'
         [Yuzu]='Yuzu is a citrus fruit from East Asia that tastes like a cross between a lemon, a mandarin orange, and a grapefruit.'
     );
-    
+
+
     #optionManager ARGS
     #declare -a X=($(awkFieldManager -p 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'))
-    
-    #awkIndexQuerier -F "(ValuesOnly=true)[[:digit:]]" X
+
+#awkIndexQuerier FRUITS;
+   
+#    awkIndexQuerier -F "(ValuesOnly=true)[[:digit:]]" X
     #isUniqueKey -Q -p 'tsh=world' FRUITS
     
     
@@ -56,13 +59,13 @@ function testing() {
     #awkFieldManager 'calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno';
     
     #eval "FRUITS$(optionManager -a 'Zucchini=Zucchini is technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS)"
-    # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
+    #optionManager --m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
     # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'eZucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
     # optionManager -m -G 'Yuzu,Xigua,Watermelon,Zucchini' -a 'Zucchini=Zucchini is= =technically a fruit, although it is treated as a vegetable in cooking.' -A FRUITS
     
     #awkGetOptions -Q sin -F sh -UN -O "print,p|empty,e:m[default=(Mandatory=true) hi]:noMatch[default=(Mandatory=true)d],n:noList,l:" -- '--sscj-e-jh-a hello' '-l' '-e yessir' '-e yesplease' '-p ' '-l '
     #awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
- #   dialogFactory -V yes -B 'cle'  -B 'extra-b' -B 'scro' -L 'ext=bye' -B 'ext'
-    sedCharacterCasing "${@}";
+    dialogFactory -V yes -B 'keep-w'  -B 'extra-b' -B 'scro' -L 'tit=(Title)bye' -L 'mes=(Upper)hello world' -L 'ext=(Upper)Hello'
+    #sedCharacterCasing "${@}";
 }
 testing "${@}";
