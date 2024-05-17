@@ -67,9 +67,12 @@ function testing() {
     #awkGetOptions  -O "Al|b:||c:" -M -A 'skip' -Q "double" -F "short" -- '--Al ' '-b value1' '-c value2'
 #    dialogFactory -V yes -B 'keep-w' -B 'extra-b' -B 'scro' -L 'tit=(Title)bye' -L 'me=(Upper)hello world' -L 'ext=(Title)Hello'
 
-    dialogFactory -V 'msg' -L 'tit=IP Information' -B 'no-collapse' -L "mess=$(ls -al)"
+#   dialogFactory -V 'msg' -L 'tit=IP Information' -B 'no-collapse' -L "mess=$(ls -al)"
 
     #sedCharacterCasing "${@}";
+#awkParameterCompletion -q -s "wa" -d ',' -O 'warn,error,message'
+    #message "${@}"
+   borders "${@}"
 }
 
 #set -x

@@ -1,6 +1,30 @@
 # Check if LIB_DIR is already exported, if not, set it to the directory of this script
 export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)";
 
+
+function borders() {
+
+    local -i OPTIND;
+    local OPT OPTARG;
+    local -A BORDER_PROPERTIES;
+
+   while getopts :B:C:P:M: OPT; do
+        case ${OPT} in
+            C|B|P|M) BORDER_PROPERTIES[${OPT}]="${OPTARG}";;
+        esac
+    done
+
+    shift $((OPTIND - 1));
+
+    awk \
+        -v padding="${BORDER_PROPERTIES[P]}" \
+        -v margins="${BORDER_PROPERTIES[M]}" \
+        -v columns="$(tput cols):${BORDER_PROPERTIES[C]}" \
+        -v border="${BORDER_PROPERTIES[B]}" \
+        -f "${LIB_DIR}/awk-lib/borders.awk"; 
+    return 0;
+}
+
 function dialogFactory() {
 
     unsetVariables 'DIALOG_RESPONSE';
@@ -17,8 +41,8 @@ function dialogFactory() {
         ["variants"]='calendar,buildlist,checklist,dselect,fselect,editbox,form,tailbox,tailboxbg,textbox,timebox,infobox,inputbox,inputmenu,menu,mixedform,mixedgauge,gauge,msgbox,passwordform,passwordbox,pause,prgbox,programbox,progressbox,radiolist,rangebox,yesno'
         ["labels"]='message,no-label,backtitle,cancel-label,column-separator,help-label,default-item,exit-label,extra-label,default-button,title'
         ["buttons"]='extra-button,help-button'
-        ["lines"]="$(tput lines)"
-        ["columns"]="$(tput cols)"
+        ["lines"]="$(($(tput lines) - 6))"
+        ["columns"]="$(($(tput cols) - 3))"
     ) DIALOG_TOGGLES DIALOG_LABELS;
 
     # Parse command-line options
