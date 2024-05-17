@@ -14,7 +14,7 @@ BEGIN {
 
     # Remove the first and last character of the string
     # Split the string into entries array using the given delimiters
-    entry_count = split(substr($0, 1, length($0) - 3), entries, /\]="|" \[|^\[/);
+    entry_count = split(substr($0, 1, length($0) - 2), entries, /\]="|" \[|^\[/);
 
     # If there are less than 2 entries, delete the entries array and exit with code 10
     if (entry_count < 2) {

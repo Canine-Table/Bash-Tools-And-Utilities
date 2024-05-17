@@ -7,21 +7,49 @@ function borders() {
     local -i OPTIND;
     local OPT OPTARG;
     local -A BORDER_PROPERTIES;
+    local -a PAGES DYNAMIC_PARAMETERS;
 
-   while getopts :B:C:P:M: OPT; do
+    while getopts :B:C:P:M:p:l:q OPT; do
         case ${OPT} in
+            q) BORDER_PROPERTIES[${OPT}]='true';;
             C|B|P|M) BORDER_PROPERTIES[${OPT}]="${OPTARG}";;
+            p) PAGES+=("$(eval "${OPTARG}" 2> /dev/null || cat "${OPTARG}" 2> /dev/null || sedCharacterCasing "${OPTARG}")");;
+            l) BORDER_PROPERTIES[${OPT}]="$(sedCharacterCasing ${OPTARG})";;
         esac
     done
 
     shift $((OPTIND - 1));
 
-    awk \
-        -v padding="${BORDER_PROPERTIES[P]}" \
-        -v margins="${BORDER_PROPERTIES[M]}" \
-        -v columns="$(tput cols):${BORDER_PROPERTIES[C]}" \
-        -v border="${BORDER_PROPERTIES[B]}" \
-        -f "${LIB_DIR}/awk-lib/borders.awk"; 
+    [[ "${#PAGES[@]}" -eq 0 ]] && {
+        "${BORDER_PROPERTIES["q"]:-false}" || awkDynamicBorders -l "No Pages were provided" -c "Please at a minmum 1 page (-p) to use this function." >&2;
+        return 1;
+    }
+
+    for ((OPTIND=0; OPTIND < "${#PAGES[@]}"; OPTIND++)); do
+
+        # Set header label or enable header
+        if [[ "${OPTIND}" -eq 0 ]]; then
+            if [[ -n "${BORDER_PROPERTIES["l"]}" ]]; then
+                DYNAMIC_PARAMETERS+=('-v' "label=${BORDER_PROPERTIES["l"]}");
+            else
+                DYNAMIC_PARAMETERS+=("-v" "header=true");
+            fi
+        fi
+
+        # Enable footer for the last display item
+        [[ "$((OPTIND + 1))" -eq "${#PAGES[@]}" ]] && DYNAMIC_PARAMETERS+=("-v" "footer=true");
+
+        echo "${PAGES[$OPTIND]}" | awk \
+            "${DYNAMIC_PARAMETERS[@]}" \
+            -v padding="${BORDER_PROPERTIES[P]}" \
+            -v margins="${BORDER_PROPERTIES[M]}" \
+            -v columns="$(tput cols):${BORDER_PROPERTIES[C]}" \
+            -v border="${BORDER_PROPERTIES[B]}" \
+            -f "${LIB_DIR}/awk-lib/borders.awk"; 
+
+        DYNAMIC_PARAMETERS=();
+    done
+
     return 0;
 }
 

@@ -40,7 +40,7 @@ function borderStyle(style) {
 }
 
 function validSpacing(number) {
-    if (number ~ /^[[:digit:]]+$/ && number < border_properties["columns"]) {
+    if (number ~ /^[[:digit:]]+$/) {
         return number;
     }
     
@@ -57,7 +57,13 @@ BEGIN {
     }
 
     delete terminal;
-    
+
+    if (border_properties["columns"] < 1) {
+        delete border_properties;
+        print "The number of columns provided was either invalid or missing.";
+        exit 10;
+    }
+
     if (length(border) > 0) {
         borderStyle(border);
         border_properties["columns"] = int(border_properties["columns"] - 2);
@@ -71,13 +77,23 @@ BEGIN {
         pad_values[set_spacing] = validSpacing(pad_values[set_spacing]);
     
         if ((set_spacing % 2) == 0) {
-            border_properties["columns"] = int(border_properties["columns"] - (pad_values[set_spacing] + margin_values[set_spacing]));
+            border_properties["columns"] = (border_properties["columns"] - (pad_values[set_spacing] + margin_values[set_spacing]));
         }
 
         spacing[set_spacing] = pad_values[set_spacing] ":" margin_values[set_spacing];
         delete pad_values[set_spacing];
         delete margin_values[set_spacing];
-
-        print spacing[set_spacing]; 
     }
+
+    if (border_properties["columns"] < 1) {
+        print "You cannot fix anything within '" border_properties["columns"] "' columns, please reduce the spacing or zoom out to increase the screen size";
+        exit 11;
+    }
+} {
+    if (length(label) > 0) {
+        print label;
+        label = "";
+    }
+    
+    print $0
 }
