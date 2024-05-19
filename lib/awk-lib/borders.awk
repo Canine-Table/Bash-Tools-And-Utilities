@@ -126,7 +126,11 @@ BEGIN {
     # TODO: the main body of the formated page
     #================================================================================================================================
 
-    print $0
+    line_count = split($0, lines, /▀/);
+
+    for (line_index = 1; line_index <= line_count; line_index++) {
+        print pad_values[4] "" border_style["vertical"] "" margin_values[4] "" lines[line_index];
+    }
 
     #================================================================================================================================
     #================================================================================================================================
@@ -139,8 +143,8 @@ BEGIN {
         printf pad_values[4] "" border_style["bottom_left"] "" border_properties["divider"] "" border_style["bottom_right"] "" pad_values[2];
 
         if (pad_values[3] > 0) {
-            while(--pad_values[3]) {
-                print " ";
+            while(pad_values[3]--) {
+                print "";
             }
         }
     } else {
