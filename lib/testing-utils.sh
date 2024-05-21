@@ -5,7 +5,7 @@ export | grep -q 'declare -x LIB_DIR=' || export LIB_DIR="$(cd "$(dirname "${BAS
 function borders() {
 
     local -i OPTIND;
-    local OPT OPTARG PAGE_ID;
+    local OPT OPTARG;
     local -A BORDER_PROPERTIES;
     local -a PAGES DYNAMIC_PARAMETERS;
 
@@ -38,8 +38,6 @@ function borders() {
 
         # Enable footer for the last display item
         [[ "$((OPTIND + 1))" -eq "${#PAGES[@]}" ]] && DYNAMIC_PARAMETERS+=("-v" "footer=true");
-
-
 
         echo "${PAGES[$OPTIND]}" | awk \
             "${DYNAMIC_PARAMETERS[@]}" \
