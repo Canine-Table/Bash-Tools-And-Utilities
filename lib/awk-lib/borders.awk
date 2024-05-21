@@ -83,11 +83,51 @@ function realLength(string) {
     return length(real_length);
 }
 
+function colorize(string) {
+    color_check = string;
+    color = "";
+
+    while (match(color_check, /\033\[[0-9;]*m/)) {
+        if (RSTART -gt 0) {
+            sub(/\033/, "", color_check);
+
+            if (substr(color_check, RSTART, RLENGTH - 1) ~ /^\[0m$/) {
+                color = "unset";
+            } else {
+                color = "\033" substr(color_check, RSTART, RLENGTH - 1);
+            }
+        }
+    }
+
+    print pad_values[4] "" border_style["vertical"] "" margin_values[4] "" border_properties["color"] string "\033[0m" margin_values[2] "" characterDuplicator(length(border_properties["divider"]) - realLength(string) - length(margin_values[4] margin_values[2])) "" border_style["vertical"] "" pad_values[2];
+
+    if (length(color) > 0) {
+        if (color == "unset") {
+            border_properties["color"] = "";
+        } else {
+            border_properties["color"] = color;
+        }
+    }
+}
+
 function wrapping(line) {
     if (realLength(line) <= border_properties["line_length"]) {
-        print line
+        colorize(line);
     } else {
-        print border_properties["line_length"];
+
+        #if (length(border_properties["wrapping]) > 0) {
+        #    line = border_properties["wrapping] " " line;
+        #    border_properties["wrapping] = "";
+        #}
+
+        while (match(line, /[[:space:]]+/)) {
+            new_line = substr(line, 1, RSTART + RLENGTH - 1);
+            new_line_length = realLength(new_line);
+
+
+
+            line = substr(line, RSTART + RLENGTH);
+        }
     }
 }
 
@@ -139,6 +179,7 @@ BEGIN {
     }
     # Adjust the divider based on the padding values.
     border_properties["divider"] = substr(border_properties["divider"], length(pad_values[2]) + 1 + length(pad_values[4]));
+    border_properties["line_length"] = length(border_properties["divider"]) - length(margin_values[4] margin_values[2]);
 }
 # The main block processes each input line to create the formatted text box.
 {
@@ -166,7 +207,7 @@ BEGIN {
     # Print each line of the main content, enclosed in vertical borders with margins.
     line_count = split($0, lines, /▀/);
 
-    for (line_index = 1; line_index <= line_count; line_index++) {
+    for (line_index = 1; line_index < line_count; line_index++) {
         wrapping(lines[line_index]);
     }
 
