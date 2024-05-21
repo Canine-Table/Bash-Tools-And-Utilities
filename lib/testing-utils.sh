@@ -13,7 +13,7 @@ function borders() {
         case ${OPT} in
             q) BORDER_PROPERTIES[${OPT}]='true';;
             C|B|P|M) BORDER_PROPERTIES[${OPT}]="${OPTARG}";;
-            p) PAGES+=("$((eval "${OPTARG}" 2> /dev/null || cat "${OPTARG}" 2> /dev/null || sedCharacterCasing "${OPTARG}") | sed 's/$/▀/g' | tr -d '\n')");;
+            p) PAGES+=("$((eval "${OPTARG}" 2> /dev/null || cat "${OPTARG}" 2> /dev/null || echo -n "${OPTARG}") | sed 's/$/▀/g' | tr -d '\n')");;
             l) BORDER_PROPERTIES[${OPT}]="$(sedCharacterCasing ${OPTARG})";;
         esac
     done

@@ -49,6 +49,7 @@ function validSpacing(number) {
     if (number ~ /^[[:digit:]]+$/) {
         return number;
     }
+
     return 1;
 }
 
@@ -78,12 +79,13 @@ function characterDuplicator(count, character) {
 
 function realLength(string) {
     real_length = string;
-    
+    gsub(/\033\[[0-9;]*m/, "", real_length);
+    return length(real_length);
 }
 
 function wrapping(line) {
-    if (length(line) <= border_properties["line_length"]) {
-        printf line
+    if (realLength(line) <= border_properties["line_length"]) {
+        print line
     } else {
         print border_properties["line_length"];
     }
@@ -95,9 +97,9 @@ BEGIN {
     entry_count = split(columns, terminal, /[:]/)
     # Validate the terminal dimensions and set the number of columns accordingly.
     if (entry_count != 2 || terminal[2] < 6 || terminal[2] >= terminal[1]) {
-        border_properties["columns"] = int(terminal[1]);
+        border_properties["columns"] = terminal[1];
     } else {
-        border_properties["columns"] = int(terminal[2]);
+        border_properties["columns"] = terminal[2];
     }
     # Clear the 'terminal' array as it's no longer needed.
     delete terminal;
@@ -108,11 +110,14 @@ BEGIN {
         exit 10;
     }
     # If a border style is provided, set the border characters and adjust the column width.
+
     if (length(border) > 0) {
         borderStyle(border);
         border_properties["columns"] = border_properties["columns"] - 2;
-        border_properties["divider"] = characterDuplicator(border_properties["columns"], border_style["horizontal"]);
     }
+
+    border_properties["divider"] = characterDuplicator(border_properties["columns"], border_style["horizontal"]);
+
     # Split the 'padding' and 'margins' variables into their respective arrays.
     split(padding, pad_values, /[,]/);
     split(margins, margin_values, /[,]/);
@@ -134,7 +139,6 @@ BEGIN {
     }
     # Adjust the divider based on the padding values.
     border_properties["divider"] = substr(border_properties["divider"], length(pad_values[2]) + 1 + length(pad_values[4]));
-    border_properties["line_length"] = length(border_properties["divider"]) - length(margin_values[4] margin_values[2]);
 }
 # The main block processes each input line to create the formatted text box.
 {
