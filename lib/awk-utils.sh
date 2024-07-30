@@ -313,6 +313,7 @@ function awkDynamicBorders() {
         return 1;
     }
 
+
    # Parse options passed to the function
     while getopts :s:d:l:c:C:W OPT; do
         case ${OPT} in
@@ -338,7 +339,7 @@ function awkDynamicBorders() {
                 if [[ -n "${BORDER_PROPERTIES["l"]}" ]]; then
                     PARAMETERS+=('-v' "label=${BORDER_PROPERTIES["l"]}");
                 else
-                    PARAMETERS+=("-v" "header=true");
+                    PARAMETERS+=('-v' "header=true");
                 fi
             fi
 
@@ -356,7 +357,7 @@ function awkDynamicBorders() {
             fi
 
             # Apply the dynamic border using AWK
-            echo -en "${PAGES["${OPTIND}"]}" | awk "${PARAMETERS[@]}" \
+            echo -e "${PAGES["${OPTIND}"]}" | awk "${PARAMETERS[@]}" \
                 -v style="${BORDER_PROPERTIES['s']:-single}" \
                 -v columns="${BORDER_PROPERTIES['C']:-$(tput cols)}" \
                 -f "${BIN_DIR}/../lib/awk-lib/awk-utils.awk" \

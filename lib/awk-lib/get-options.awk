@@ -60,7 +60,7 @@ BEGIN {
                             }
                         }
 
-                        passed_parameters = passed_parameters "" prefix "" kwargs[1] " " "" quote_values "" default_value "" quote_values " ";
+                        passed_parameters = passed_parameters "" prefix "" kwargs[1] " " quote_values "" default_value "" quote_values " ";
                     } else {
                         printf quote_values "" kwargs[1];
 
