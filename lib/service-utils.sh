@@ -50,9 +50,7 @@ function _systemdInit() {
                             }
                             return 0;
                         } || {
-                            SERVICE=$?;
-                            inform -t 'error' 'Permission Denied' "Super user required, $(whoami) is neither root not a super user.";
-                            return ${SERVICE};
+                            return $?;
                         }
                     ;;
                     *) systemctl status "${1}" ;;
