@@ -19,6 +19,8 @@ function wireless() {
             "(Required) Student ID=${DIALOG_RESPONSE[2]}" \
             "(Optional) Mac Address=${DIALOG_RESPONSE[3]}";
 
+        [[ $? == 1 ]] && break;
+
         [[ ${DIALOG_INPUT[1]} =~ ^([1-9]{1}|1[[:digit:]]{1}|2[0-5]{1})$ ]] || {
             dialogFactory \
                 -V 'msg' \
@@ -36,7 +38,6 @@ function wireless() {
                 -L 'ok=(Title)understood';
             INVALID='true';
         }
-
     done
 }
 

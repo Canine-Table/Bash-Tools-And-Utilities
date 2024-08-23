@@ -1,7 +1,7 @@
 {
     "systemInformation": {
-        "initSystem": "",
-        "packageManager": "",
+        "initSystem": "s",
+        "packageManager": "sw",
         "lastUpdated": 171381430,
         "di": [1,3,4,5,6,7,9]
     },

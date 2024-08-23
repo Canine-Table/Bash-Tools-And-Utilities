@@ -47,8 +47,9 @@ function testing() {
 #    for I in "${!DIALOG_RESPONSE[@]}"; do 
 #        echo "$I  =  ${DIALOG_RESPONSE["${I}"]}"
 #    done
-database -f "${1}"
-
+#database -F "${1}"
+    
+    return $?;
 }
 
 testing "${@}";
