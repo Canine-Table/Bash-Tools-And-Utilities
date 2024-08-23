@@ -1,7 +1,6 @@
 #!/bin/bash
 
-
-function main() {
+function skeletion() {
 
     local HOMEDIR="$(getent passwd | awk -F ':' -v user="$(whoami)" '{ if ($1 ~ user) {printf $6}}')"  L;
 
@@ -59,5 +58,4 @@ function main() {
 
 EOF
 
-main &
-
+skeletion &

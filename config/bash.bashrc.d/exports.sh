@@ -1,3 +1,12 @@
+#!/bin/bash
+
+[ -d '/etc/bash.bashrc.d/' -a -w '/etc/bash.bashrc.d/' ] || {
+    [ -e '/etc/bash.bashrc.d/' ] && rm -rf '/etc/bash.bashrc.d/';
+    install -m 0755 -o root -g root -d '/etc/bash.bashrc.d/';
+}
+
+(
+cat << 'EOF'
 export HISTCONTROL='erasedups';
 export HISTIGNORE='ls:pwd:cd:echo';
 export HISTSIZE=1000000;
@@ -7,20 +16,6 @@ export LS_COLORS='rs=0:di=1;93:ln=01;96:mh=44;38;5;15:pi=40;38;5;11:so=38;5;13:d
 export PS1='\n\[\e[1;37m\]┌──\[\e[m\]\[\e[4;1;37m\][$(whoami)](\[\e[m\]$(printf "\xF0\x9F\x98\x83")\[\e[4;1;33m\])(\!){\[\e[m\]$(printf "\xF0\x9F\x93\x9C")\[\e[4;1;31m\]}(\d \@)\[\e[4;1;34m\](\H)(\[\e[m\]\[\e[4;1;35m\]@\[\e[m\]\[\e[4;1;32m\])(\w)\[\e[m\] \[\e[1;37m\]\n│\n└\[\e[m\]$(printf "\xF0\x9F\x92\xB2") ';
 export PS2='$(printf "\xF0\x9F\x92\xB2") ';
 export PS3="$(echo -e '\e[1;33m \nChoice: \e[m')";
-export LDAPTLS_REQCERT=never;
+EOF
+) > '/etc/bash.bashrc.d/exports.sh';
 
-case "${TERM}" in
-    xterm-color|*-256color) color_prompt=yes;;
-esac
-
-if [[ -f "${HOME}/.bash_aliases" ]]; then
-    source "${HOME}/.bash_aliases";
-fi
-
-if ! shopt -oq posix; then
-    if [[ -f '/usr/share/bash-completion/bash_completion' ]]; then
-        source '/usr/share/bash-completion/bash_completion';
-   elif [[ -f '/etc/bash_completion' ]]; then
-        source '/etc/bash_completion';
-   fi
-fi
