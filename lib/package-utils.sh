@@ -34,7 +34,7 @@ __bashPackage() {
 }
 
 function package() {
-    local PACKAGE;
+    local PACKAGE TASKS;
 
     function _archRepository() {
         local SUPER_USER;
@@ -45,7 +45,6 @@ function package() {
             } || return $?;
         }
 
-        local TASK;
         TASKS="$(awkParameterCompletion -d ',' -s "${1}" 'install,remove,update,search')" &&  case "${TASKS}" in
             'install') ${SUPER_USER} ${PACKAGE} -S "${2}";;
             'remove') ${SUPER_USER} ${PACKAGE} -R "${2}";;
@@ -65,6 +64,21 @@ function package() {
                 }' | less;
             ;;
         esac
+
+        return 0;
+    }
+
+    function _alpinehRepository() {
+        local SUPER_USER;
+
+        SUPER_USER="$(superUser)" || {
+            TASKS="$(awkParameterCompletion -d ',' -s "${1}" 'install,remove,update,search')" &&  case "${TASKS}" in
+                'install') ${SUPER_USER} ${PACKAGE} add "${2}";;
+                'remove') ${SUPER_USER} ${PACKAGE} del "${2}";;
+                'update') ${SUPER_USER} ${PACKAGE} update && ${SUPER_USER} ${PACKAGE} upgrade;;
+                'search') ${PACKAGE} search "${2}";;
+            esac
+        } || return $?;
 
         return 0;
     }
@@ -96,19 +110,24 @@ function package() {
     local PACKAGES=(
         'apt' 'apt-get'
         'dnf' 'yum'
+        'apk'
         'pacman'
         'zypper'
     );
  
     for PACKAGE in "${PACKAGES[@]}"; do
         command -v "${PACKAGE}" &> /dev/null && case "${PACKAGE}" in
-            'pacman') _archRepository "${@}"
+            'pacman') _archRepository "${@}";
                 break;;
-            'apt'|'apt-get') _debianRepository "${@}"
+            'apt'|'apt-get') _debianRepository "${@}";
                 break;;
-            'dnf'|'yum') _redhatRepository "${@}"
+            'dnf'|'yum') _redhatRepository "${@}";
                 break;;
-            'zypper') _opensuseRepository "${@}"
+            'zypper') _opensuseRepository "${@}";
+                break;;
+            'pacman') _archRepository "${@}";
+                break;;
+            'pacman') _alpineRepository "${@}";
                 break;;
         esac
     done
