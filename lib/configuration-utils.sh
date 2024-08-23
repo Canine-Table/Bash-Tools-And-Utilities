@@ -21,3 +21,21 @@ function append_path() {
     return 0;
 }
 
+__sddmAstronautTheme() {
+    local SUPER_USER;
+    
+    SUPER_USER="$(superUser)" && {
+        command -v git &> /dev/null || {
+            yes | ${SUPER_USER} pacman -S git || return $?;
+        }
+
+        [[ -d '/usr/share/sddm/themes/sddm-astronaut-theme' ]] && {
+            inform -t 'error' 'sddm-astronaut-theme' 'sddm-astronaut-theme is already located at /usr/share/sddm/themes/sddm-astronaut-theme/';
+        } || {
+            ${SUPER_USER} git clone 'https://github.com/keyitdev/sddm-astronaut-theme.git' '/usr/share/sddm/themes/sddm-astronaut-theme';
+            ${SUPER_USER} cp /usr/share/sddm/themes/sddm-astronaut-theme/Fonts/* '/usr/share/fonts/';
+        }
+    } || return $?;
+
+    return 0;
+}

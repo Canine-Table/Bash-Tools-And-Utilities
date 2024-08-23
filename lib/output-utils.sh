@@ -134,7 +134,7 @@ function inform() {
         return 2;
     else
         _format "${OUTPUT_PROPERTIES[t]}";
-        _println ${@};
+        _println "${@}";
         return 0;
     fi
 }
